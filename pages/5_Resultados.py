@@ -1,4 +1,4 @@
-# pages/4_Resultados.py
+# pages/5_Resultados.py
 import streamlit as st
 
 st.title("📈 Resultados Detalhados")
@@ -7,7 +7,6 @@ if st.session_state.last_results is not None:
     # --- Informações do Treinamento ---
     st.subheader(f"Modelo Treinado: {st.session_state.trained_model}")
     
-    # Exibe a configuração do treinamento, se disponível
     if st.session_state.get('training_config'):
         config = st.session_state.training_config
         st.markdown(f"""
@@ -19,14 +18,17 @@ if st.session_state.last_results is not None:
         
     # --- Tabela de Resultados ---
     st.subheader("Resultados de Acurácia por Batch")
-    st.dataframe(st.session_state.last_results, use_container_width=True)
+    # MUDANÇA AQUI: use_container_width=True -> width='stretch'
+    st.dataframe(st.session_state.last_results, width='stretch')
     
     # --- Gráfico ---
     st.subheader(f"Gráfico de Evolução da Acurácia")
+    # MUDANÇA AQUI: use_container_width=True -> width='stretch'
     st.line_chart(
         st.session_state.last_results,
         x="Epoch/Batch",
-        y="Accuracy"
+        y="Accuracy",
+        width='stretch' 
     )
 
 else:
