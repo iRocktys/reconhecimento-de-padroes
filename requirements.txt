@@ -1,5 +1,8 @@
 streamlit
 streamlit-option-menu
 streamlit-shadcn-ui
-pandas
+pandas==2.2.3
 numpy
+capymoa
+scikit-learn
+torch
