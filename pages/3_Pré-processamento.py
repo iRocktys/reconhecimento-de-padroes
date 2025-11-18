@@ -315,7 +315,7 @@ if start_button_clicked:
                     tooltip=['Feature', 'Score']
                 ).interactive()
                 
-                st.altair_chart(chart, use_container_width=True)
+                st.altair_chart(chart, width='stretch')
         
         final_features = X_data_df_cleaned.columns.tolist()
         with st.expander(f"Lista Final de Features ({len(final_features)})", expanded=False):
@@ -331,7 +331,7 @@ if start_button_clicked:
             color=alt.Color(target_col, legend=alt.Legend(title="Legenda", orient='right')),
             tooltip=[target_col, 'Contagem']
         ).interactive()
-        st.altair_chart(bar_chart, use_container_width=True)
+        st.altair_chart(bar_chart, width='stretch')
         
         if timestamp_col:
             st.markdown("##### Distribuição de Ataques ao Longo do Tempo (Contínuo)")
@@ -348,7 +348,7 @@ if start_button_clicked:
                     tooltip=[alt.Tooltip('time_bin', format="%H:%M"), target_col, 'Contagem']
                 ).interactive()
                 
-                st.altair_chart(area_chart, use_container_width=True)
+                st.altair_chart(area_chart, width='stretch')
             except Exception as e:
                 st.warning(f"Não foi possível gerar o gráfico de distribuição ao longo do tempo: {e}")
             

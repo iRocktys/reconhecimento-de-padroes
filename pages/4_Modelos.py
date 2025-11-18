@@ -6,11 +6,10 @@ from utils.training import get_models
 
 # --- Importações Dinâmicas do CapyMOA ---
 try:
-    from capymoa.stream.generator import SEA, RandomTreeGenerator, RandomRBFGenerator
+    # Removido SEA da importação
+    from capymoa.stream.generator import RandomTreeGenerator, RandomRBFGenerator
     from capymoa.stream.drift import DriftStream, AbruptDrift, GradualDrift
 except ImportError:
-    st.error("Biblioteca 'capymoa' não encontrada. Por favor, instale com 'pip install capymoa'")
-    SEA = None
     RandomTreeGenerator = None
     RandomRBFGenerator = None
     DriftStream = None
@@ -29,19 +28,18 @@ st.title("🧠 4. Configuração de Modelos e Dados")
 # --- Passo 1: Seleção da Fonte de Dados ---
 st.header("1. Fonte de Dados do Stream", divider="rainbow")
 
-# --- ALTERAÇÃO (Request 1): Padrão agora é Sintético (index=1) ---
+# Padrão definido para index=1 (Sintético) conforme solicitado
 data_source = st.radio(
     "Escolha a origem dos dados para o treinamento:",
     ["Usar Dados do Pré-processamento (Real)", "Gerar Stream Sintético com Drift (DriftStream)"],
-    index=1 
+    index=1
 )
 
 stream_ready = False
 total_instances = 0
 
-# --- Lógica A: Dados Reais (Com correção de erro) ---
+# --- Lógica A: Dados Reais ---
 if data_source == "Usar Dados do Pré-processamento (Real)":
-    # --- CORREÇÃO DO ERRO (Request 1) ---
     # Verifica se o stream existe E se os dados originais (X_final_df) não são None
     if ('stream_data' in st.session_state and 
         st.session_state.stream_data is not None and 
@@ -56,7 +54,6 @@ if data_source == "Usar Dados do Pré-processamento (Real)":
             st.error(f"Erro ao ler dados reais: {e}")
             stream_ready = False
     else:
-        # --- ALTERAÇÃO (Request 2): Aviso para o usuário ---
         st.warning("⚠️ Nenhum stream pré-processado encontrado na memória.")
         st.markdown("""
         **Para utilizar dados reais:**
@@ -65,27 +62,23 @@ if data_source == "Usar Dados do Pré-processamento (Real)":
         3. Retorne aqui.
         """)
         stream_ready = False
-        # --- FIM DA ALTERAÇÃO ---
 
 # --- Lógica B: Dados Sintéticos (DriftStream) ---
 elif data_source == "Gerar Stream Sintético com Drift (DriftStream)":
-    if SEA is None:
+    if RandomTreeGenerator is None:
         st.error("A biblioteca `capymoa` não foi importada corretamente.")
     else:
         st.markdown("Construa um cenário complexo de *concept drift* definindo uma sequência de mudanças.")
         
         with st.container(border=True):
             st.subheader("1. Escolha a Família do Gerador")
-            gen_family = st.selectbox("Família de Dados", ["SEA (Conceitos simples)", "RandomTreeGenerator (Árvores)", "RandomRBF (Centróides)"])
-            
+            # Removido SEA da lista
+            gen_family = st.selectbox("Família de Dados", ["RandomTreeGenerator (Árvores)", "RandomRBF (Centróides)"]) 
+
             # Configurações Base
             base_params = {}
-            if gen_family == "SEA (Conceitos simples)":
-                st.info("O SEA gera dados baseados em 4 funções lógicas diferentes. O conceito mudará ciclicamente (1->2->3->4).")
-                base_params['noise'] = st.slider("Nível de Ruído (%)", 0, 50, 10) / 100.0
-                base_params['start_func'] = 1
-                
-            elif gen_family == "RandomTreeGenerator (Árvores)":
+            
+            if gen_family == "RandomTreeGenerator (Árvores)":
                 st.info("Gera dados baseados em árvores de decisão aleatórias. O conceito mudará alterando a 'seed' da árvore.")
                 c1, c2 = st.columns(2)
                 base_params['num_classes'] = c1.number_input("Num. Classes", 2, 10, 2)
@@ -118,19 +111,35 @@ elif data_source == "Gerar Stream Sintético com Drift (DriftStream)":
                     "Tipo": st.column_config.SelectboxColumn(options=["Abrupto", "Gradual"], required=True),
                     "Largura (Width)": st.column_config.NumberColumn(min_value=1, help="1 para Abrupto. Valores maiores (ex: 1000) para Gradual.")
                 },
-                use_container_width=True
+                width='stretch'
+            )
+
+            st.divider()
+            # --- ALTERAÇÃO: Campo para tamanho total ---
+            st.subheader("3. Tamanho Final do Stream")
+            total_stream_size = st.number_input(
+                "Quantidade Total de Amostras (Instâncias)",
+                min_value=1000,
+                value=20000,
+                step=1000,
+                help="Define o tamanho total do stream sintético gerado. Certifique-se de que seja maior que a posição do último drift."
             )
             
-            if st.button("🛠️ Gerar Stream Sintético", type="primary", use_container_width=True):
+            if st.button("🛠️ Gerar Stream Sintético", type="primary", width='stretch'):
                 try:
                     sorted_drifts = edited_drifts.sort_values(by="Posição (Instância)")
+                    
+                    # Validação: Tamanho total vs Último Drift
+                    if not sorted_drifts.empty:
+                        last_drift_pos = sorted_drifts["Posição (Instância)"].max()
+                        if total_stream_size <= last_drift_pos:
+                            st.error(f"Erro: O tamanho total ({total_stream_size}) deve ser maior que a posição do último drift ({last_drift_pos}). Aumente o tamanho total.")
+                            st.stop()
+
                     stream_components = []
                     
                     # 1. Cria o Gerador Inicial
-                    if gen_family.startswith("SEA"):
-                        current_func = base_params['start_func']
-                        stream_components.append(SEA(function=current_func, noise=base_params['noise']))
-                    elif gen_family.startswith("RandomTree"):
+                    if gen_family.startswith("RandomTree"):
                         current_seed = base_params['tree_seed_start']
                         stream_components.append(RandomTreeGenerator(
                             tree_random_seed=current_seed,
@@ -163,11 +172,8 @@ elif data_source == "Gerar Stream Sintético com Drift (DriftStream)":
                         else:
                             stream_components.append(GradualDrift(position=pos, width=width))
                         
-                        # Adiciona novo conceito
-                        if gen_family.startswith("SEA"):
-                            current_func = current_func + 1 if current_func < 4 else 1
-                            stream_components.append(SEA(function=current_func, noise=base_params['noise']))
-                        elif gen_family.startswith("RandomTree"):
+                        # Adiciona novo conceito (Semente + 1)
+                        if gen_family.startswith("RandomTree"):
                             current_seed += 1
                             stream_components.append(RandomTreeGenerator(
                                 tree_random_seed=current_seed,
@@ -192,14 +198,13 @@ elif data_source == "Gerar Stream Sintético com Drift (DriftStream)":
                     # Salva na sessão
                     st.session_state.stream_data = synthetic_stream
                     
-                    # Define metadados para o stream sintético
-                    max_pos = sorted_drifts["Posição (Instância)"].max() if not sorted_drifts.empty else 10000
-                    st.session_state.synthetic_max_instances = int(max_pos + 5000)
+                    # Define metadados para o stream sintético usando o valor do input
+                    st.session_state.synthetic_max_instances = total_stream_size
                     
                     # --- IMPORTANTE: Define X_final_df como None para indicar que é sintético ---
                     st.session_state.X_final_df = None 
                     
-                    st.success(f"✅ Stream '{gen_family}' criado com sucesso!")
+                    st.success(f"✅ Stream '{gen_family}' criado com sucesso! Tamanho: {total_stream_size}")
                     st.rerun()
 
                 except Exception as e:
@@ -210,7 +215,7 @@ elif data_source == "Gerar Stream Sintético com Drift (DriftStream)":
              # Se X_final_df for None, sabemos que é sintético
              if st.session_state.get('X_final_df') is None:
                  total_instances = st.session_state.get('synthetic_max_instances', 20000)
-                 st.success(f"✅ Stream Sintético Ativo (Tamanho estimado: {total_instances})")
+                 st.success(f"✅ Stream Sintético Ativo (Tamanho definido: {total_instances})")
                  stream_ready = True
 
 
@@ -228,7 +233,7 @@ with st.container(border=True):
             "Máximo de Instâncias (MAX_INSTANCES)",
             min_value=1000,
             value=min(20000, safe_max_instances), 
-            max_value=safe_max_instances if stream_ready and data_source == "Usar Dados do Pré-processamento (Real)" else None,
+            max_value=safe_max_instances if stream_ready else None,
             step=1000,
             help="Quantas instâncias serão processadas.",
             disabled=not stream_ready
