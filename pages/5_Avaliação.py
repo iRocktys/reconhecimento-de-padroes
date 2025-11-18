@@ -54,7 +54,7 @@ if 'evaluation_results' not in st.session_state:
 #     if summary_table.empty:
 #         st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
 #     else:
-#         st.dataframe(summary_table, use_container_width=True, hide_index=True)
+#         st.dataframe(summary_table, width='stretch', hide_index=True)
 
 # --- Passo 2: Botão de Execução ---
 st.header("Executar Avaliação Prequencial", divider="rainbow")
@@ -153,7 +153,7 @@ if start_button_clicked:
                 else:
                     final_chart = acc_chart
                 
-                placeholder.altair_chart(final_chart, use_container_width=True)
+                placeholder.altair_chart(final_chart, width='stretch')
 
     progress_text.text(f"Avaliação concluída! Processado {total_instances:,} instâncias.")
     progress_bar.progress(1.0)
@@ -198,10 +198,10 @@ if st.session_state.evaluation_results:
             color=alt.Color('Modelo', legend=alt.Legend(orient='bottom')), 
             tooltip=['Instância', 'Modelo', 'Acurácia']
         ).interactive()
-        st.altair_chart(acc_chart, use_container_width=True)
+        st.altair_chart(acc_chart, width='stretch')
         
         st.subheader("Métricas Cumulativas Finais")
-        st.dataframe(df_metrics_final, use_container_width=True, hide_index=True)
+        st.dataframe(df_metrics_final, width='stretch', hide_index=True)
 
     for i, model_name in enumerate(models_to_run):
         with tabs[i+1]:
@@ -229,9 +229,9 @@ if st.session_state.evaluation_results:
                     color=alt.Color('Detector', title="Drift", legend=alt.Legend(orient='bottom')),
                     tooltip=['Instância', 'Detector']
                 )
-                st.altair_chart(acc_chart_model + vlines, use_container_width=True)
+                st.altair_chart(acc_chart_model + vlines, width='stretch')
             else:
-                st.altair_chart(acc_chart_model, use_container_width=True)
+                st.altair_chart(acc_chart_model, width='stretch')
 
             col_metrics, col_drift_chart = st.columns([1, 1])
 
@@ -242,7 +242,7 @@ if st.session_state.evaluation_results:
                 
                 st.dataframe(
                     pd.Series(model_metrics_float, name="Score"), 
-                    use_container_width=True,
+                    width='stretch',
                     column_config={"Score": st.column_config.NumberColumn(format="%.4f")}
                 )
 
@@ -270,4 +270,4 @@ if st.session_state.evaluation_results:
                 )
                 
                 chart = bars + text
-                st.altair_chart(chart, use_container_width=True)
+                st.altair_chart(chart, width='stretch')

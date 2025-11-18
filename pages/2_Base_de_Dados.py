@@ -110,8 +110,8 @@ def display_report():
         ).interactive() # Permite zoom e pan
         
         # --- CORREÇÃO BÔNUS ---
-        # Corrigido 'width="stretch"' (obsoleto) para 'use_container_width=True'
-        st.altair_chart(chart, use_container_width=True)
+        # Corrigido 'width="stretch"' (obsoleto) para 'width='stretch''
+        st.altair_chart(chart, width='stretch')
         
         st.subheader("Contagem de Amostras")
         st.dataframe(
@@ -120,7 +120,7 @@ def display_report():
             column_config={
                 "Contagem": st.column_config.NumberColumn(format="%d")
             },
-            use_container_width=True # Adicionado para consistência
+            width='stretch' # Adicionado para consistência
         )
         # --- FIM DA CORREÇÃO ---
         
