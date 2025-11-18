@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 import time
 from utils.models import HoeffdingTreeModel
+from utils.style import load_custom_css
+load_custom_css("style.css")
 
 st.title("🔬 Treinamento de Modelos de Stream Mining")
 

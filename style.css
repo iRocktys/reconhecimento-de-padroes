@@ -1,0 +1,17 @@
+a[data-testid="stSidebarNavLink"] {
+    font-size: 2.0rem !important; 
+    border-radius: 10px;
+    transition: background-color 0.2s, color 0.2s;
+    padding: 0.6rem 0.5rem;
+}
+
+a[data-testid="stSidebarNavLink"]:hover {
+    background-color: #333742; 
+    color: white;
+}
+
+a[data-testid="stSidebarNavLink"][aria-current="page"] {
+    background-color: #0068c9; 
+    color: white;
+    font-weight: 600; 
+}

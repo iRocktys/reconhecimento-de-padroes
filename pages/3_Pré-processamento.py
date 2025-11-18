@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import warnings
+from utils.style import load_custom_css
+load_custom_css("style.css")
 # Importa a função de pré-processamento do seu arquivo utils
 # OBS: O conteúdo da função 'perform_preprocessing' em utils/preprocessing.py
 # deve ser ajustado para receber as colunas selecionadas e o método de imputação.

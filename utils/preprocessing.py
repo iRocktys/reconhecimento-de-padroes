@@ -1,17 +1,6 @@
-# utils/preprocessing.py
-
 import pandas as pd
 
 def perform_preprocessing(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Função principal para aplicar o pré-processamento no dataset.
-    
-    Args:
-        df: O DataFrame de entrada.
-        
-    Returns:
-        O DataFrame processado.
-    """
     if df is None or df.empty:
         return pd.DataFrame()
 
@@ -32,4 +21,3 @@ def perform_preprocessing(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-# Você pode adicionar outras funções de utilidade aqui, como one-hot encoding, etc.

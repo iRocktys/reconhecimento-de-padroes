@@ -1,5 +1,6 @@
-# 1_Home.py
 import streamlit as st
+from utils.style import load_custom_css
+load_custom_css("style.css")
 
 # --- INICIALIZAÇÃO CRÍTICA DO ESTADO ---
 if 'df_original' not in st.session_state:

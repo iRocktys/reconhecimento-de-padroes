@@ -1,5 +1,7 @@
 # pages/5_Resultados.py
 import streamlit as st
+from utils.style import load_custom_css
+load_custom_css("style.css")
 
 st.title("📈 Resultados Detalhados")
 
