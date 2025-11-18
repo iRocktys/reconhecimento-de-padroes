@@ -48,13 +48,13 @@ if 'evaluation_results' not in st.session_state:
     st.session_state.evaluation_results = None
 
 # --- Tabela de Ataques ---
-with st.expander("Ver Resumo dos Ataques no Stream"):
-    st.markdown("Esta tabela mostra onde cada ataque (não-BENIGN) começa e termina no *stream* de dados processado.")
-    summary_table = get_attack_summary_table(df_processed, target_col)
-    if summary_table.empty:
-        st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
-    else:
-        st.dataframe(summary_table, use_container_width=True, hide_index=True)
+# with st.expander("Ver Resumo dos Ataques no Stream"):
+#     st.markdown("Esta tabela mostra onde cada ataque (não-BENIGN) começa e termina no *stream* de dados processado.")
+#     summary_table = get_attack_summary_table(df_processed, target_col)
+#     if summary_table.empty:
+#         st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
+#     else:
+#         st.dataframe(summary_table, use_container_width=True, hide_index=True)
 
 # --- Passo 2: Botão de Execução ---
 st.header("Executar Avaliação Prequencial", divider="rainbow")
@@ -115,14 +115,14 @@ if start_button_clicked:
                     "Acurácia": metrics.get("Acurácia", 0)
                 })
                 
-                for detector in ["DDM", "ADWIN", "ABCD"]:
-                    drift_key = f"Drift ({detector})"
-                    if metrics.get(drift_key, 0) == 1:
-                        drift_history.append({
-                            "Instância": instance_idx,
-                            "Modelo/Detector": f"{model_name} ({detector})",
-                            "Detector": detector
-                        })
+                # for detector in ["DDM", "ADWIN", "ABCD"]:
+                #     drift_key = f"Drift ({detector})"
+                #     if metrics.get(drift_key, 0) == 1:
+                #         drift_history.append({
+                #             "Instância": instance_idx,
+                #             "Modelo/Detector": f"{model_name} ({detector})",
+                #             "Detector": detector
+                #         })
 
         if accuracy_history:
             df_acc = pd.DataFrame(accuracy_history)
