@@ -5,14 +5,15 @@ import time
 
 # --- Constantes ---
 PANDAS_CHUNK_SIZE = 50000 
-ATTACK_LABEL_COL = 'Label'
+ATTACK_LABEL_COL = 'Label' # O nome "limpo" que queremos
 COLUMNS_TO_DROP = [
     'Unnamed: 0', 'Flow ID', 'Source IP', 'Source Port', 
     'Destination IP', 'Destination Port', 'Timestamp', 
-    'SimillarHTTP', 'Fwd Header Length.1', 'Protocol'
+    'SimillarHTTP', 'Fwd Header Length.1'
 ]
 MIN_SAMPLES_PER_CHUNK = 1000
 BENIGN_LABEL = 'BENIGN'
+DATA_DIR = "data" 
 
 # Fatores de downsample padrão
 DOWNSAMPLE_FACTORS = {
@@ -35,9 +36,7 @@ DOWNSAMPLE_FACTORS = {
     'Default': 0.01
 }
 
-# --- CORREÇÃO DE LÓGICA ---
-# Voltando ao seu rascunho original, que estava correto.
-# Os nomes dos arquivos .csv estão na lista.
+# Nomes dos arquivos .csv originais
 ATTACK_ORDER = {
     '03-11': [
         'Portmap.csv', 'NetBIOS.csv', 'LDAP.csv', 'MSSQL.csv', 'UDP.csv', 'UDPLag.csv', 'Syn.csv'
@@ -49,29 +48,24 @@ ATTACK_ORDER = {
     ]
 }
 
-# Arquivos de saída
-OUTPUT_FILES = {
-    '03-11': 'CICDDoS2019_03_11.csv',
-    '01-12': 'CICDDoS2019_01_12.csv'
-}
-
 # --- Funções de Lógica ---
 
 def processar_e_salvar_dia(
     dia, 
     dataset_path, 
     dynamic_downsample_factors,
+    output_filename, 
     progress_placeholder,
     cancel_flag_getter
 ):
     """
     Processa todos os arquivos CSV de um dia, aplica downsampling dinâmico
-    e salva em um único arquivo de saída.
-    Agora verifica a flag de cancelamento.
+    e salva em um único arquivo de saída dentro da pasta DATA_DIR.
     """
     
+    os.makedirs(DATA_DIR, exist_ok=True)
     lista_arquivos = ATTACK_ORDER[dia]
-    output_filepath = OUTPUT_FILES[dia]
+    output_filepath = os.path.join(DATA_DIR, output_filename)
     total_amostras_mantidas = 0
     header_escrito = False
     
@@ -80,6 +74,7 @@ def processar_e_salvar_dia(
     with open(output_filepath, 'w', newline='', encoding='utf-8') as f:
         
         for i, filename in enumerate(lista_arquivos):
+            
             filepath = os.path.join(dataset_path, dia, filename)
             attack_name_from_file = filename.replace('.csv', '')
             
@@ -106,10 +101,8 @@ def processar_e_salvar_dia(
                 
             for df_chunk in csv_reader:
                 
-                # --- ADIÇÃO: Verifica a flag de cancelamento ---
                 if not cancel_flag_getter():
                     status_text.warning("Cancelamento solicitado. Parando o processamento...")
-                    # Retorna o que foi feito até agora e um status de "Cancelado"
                     return total_amostras_mantidas, output_filepath, "Cancelled"
                 
                 df_chunk.columns = df_chunk.columns.str.strip()
@@ -158,34 +151,63 @@ def processar_e_salvar_dia(
     status_text.empty()
     
     if total_amostras_mantidas == 0:
-        status_text.error("Processamento concluído, mas 0 amostras foram salvas. Verifique se o caminho no Passo 1 está correto e se as subpastas (03-11, 01-12) contêm os arquivos .csv.")
+        status_text.error("Processamento concluído, mas 0 amostras foram salvas. Verifique se o caminho no Passo 1 está correto.")
     
-    # Retorna o total, o caminho e um status de "Sucesso"
     return total_amostras_mantidas, output_filepath, "Success"
 
+# --- FUNÇÃO ATUALIZADA (Request 1 e 2) ---
 @st.cache_data
 def get_processed_file_report(filepath):
     """
     Lê o arquivo CSV processado e retorna um dataframe com a contagem de labels.
-    Cacheado para ser rápido.
+    Esta função agora é robusta e lida com colunas de label com ou sem espaço.
     """
     if not os.path.exists(filepath):
-        # Se o arquivo não existe, não é um erro, só não foi criado.
         return None
         
     try:
-        # Lê apenas a coluna necessária para o relatório
-        df = pd.read_csv(filepath, usecols=[ATTACK_LABEL_COL])
+        # --- NOVA LÓGICA DE LEITURA ---
+        # 1. Lê apenas o cabeçalho para ser rápido
+        header_df = pd.read_csv(filepath, nrows=1, engine='c')
+        
+        # 2. Encontra o nome da coluna de label (com ou sem espaço)
+        original_label_col = None
+        for col_name in header_df.columns:
+            if col_name.strip() == ATTACK_LABEL_COL:
+                original_label_col = col_name
+                break
+        
+        # 3. Se não encontrou a coluna, reporta o erro
+        if original_label_col is None:
+            st.error(f"Erro: A coluna '{ATTACK_LABEL_COL}' (com ou sem espaços) não foi encontrada em '{filepath}'.")
+            return None
+            
+        # 4. Agora, lê o arquivo de forma eficiente, usando apenas a coluna que encontramos
+        df = pd.read_csv(filepath, usecols=[original_label_col])
+        
+        # 5. Renomeia a coluna (ex: ' Label' -> 'Label') para consistência
+        df.rename(columns={original_label_col: ATTACK_LABEL_COL}, inplace=True)
+        # --- FIM DA NOVA LÓGICA ---
+        
         report = df[ATTACK_LABEL_COL].value_counts().reset_index()
         report.columns = ['Label', 'Contagem']
         return report
     
     except pd.errors.EmptyDataError:
-        # O arquivo foi criado, mas está vazio (0 amostras). Retorna um DF vazio.
         st.warning("O arquivo de relatório está vazio (provavelmente 0 amostras foram processadas).")
         return pd.DataFrame(columns=["Label", "Contagem"])
         
     except Exception as e:
-        # Um erro real de leitura
         st.error(f"Erro ao ler o relatório do arquivo: {e}")
         return None
+
+def list_data_files(data_dir=DATA_DIR):
+    """
+    Lista todos os arquivos .csv no diretório de dados.
+    """
+    os.makedirs(data_dir, exist_ok=True)
+    try:
+        return [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+    except Exception as e:
+        st.error(f"Não foi possível listar arquivos em '{data_dir}': {e}")
+        return []
