@@ -102,7 +102,6 @@ with col2:
     if st.session_state.last_results is not None:
         st.subheader(f"Evolução da Acurácia - {st.session_state.trained_model}")
         
-        # MUDANÇA AQUI: use_container_width=True -> width='stretch'
         st.line_chart(
             st.session_state.last_results,
             x="Epoch/Batch",

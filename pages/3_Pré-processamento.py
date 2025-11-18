@@ -1,277 +1,361 @@
-# pages/3_Pré-processamento.py
 import streamlit as st
 import pandas as pd
-import numpy as np
-import warnings
+import os
+import altair as alt 
 from utils.style import load_custom_css
+from utils.preprocessing import create_stream_pipeline
+
+# --- Configuração da Página ---
+st.set_page_config(
+    page_title="Pré-processamento", 
+    page_icon="🔬",
+    layout="centered" 
+)
 load_custom_css("style.css")
-# Importa a função de pré-processamento do seu arquivo utils
-# OBS: O conteúdo da função 'perform_preprocessing' em utils/preprocessing.py
-# deve ser ajustado para receber as colunas selecionadas e o método de imputação.
 
-# Assumindo que o arquivo original está na chave 'df_original' e que as colunas
-# foram limpas (minúsculas, sem espaços) na página 'Base de Dados'.
+# --- Função Auxiliar ---
+@st.cache_data
+def load_sample_df(filepath):
+    """Carrega uma amostra do DF para preencher os widgets."""
+    try:
+        df_sample = pd.read_csv(filepath, nrows=50)
+        df_sample.columns = df_sample.columns.str.strip()
+        numeric_cols = df_sample.select_dtypes(include=['number']).columns.tolist()
+        all_cols = df_sample.columns.tolist()
+        cols_to_pre_remove = [col for col in all_cols if col not in numeric_cols and col != 'Label'] 
+        return df_sample, all_cols, cols_to_pre_remove
+    except Exception as e:
+        st.error(f"Erro ao ler amostra do arquivo: {e}")
+        return None, [], []
 
-# --- Constantes para Nomes de Colunas ---
-# Usaremos nomes minúsculos e sem espaço, conforme a limpeza feita na página 2
-TARGET_COL_DEFAULT = 'label'
-TIMESTAMP_COL_DEFAULT = 'timestamp'
+def find_default_index(options, default_value):
+    """Encontra o índice de um valor padrão em uma lista."""
+    try:
+        return options.index(default_value)
+    except ValueError:
+        return 0
 
+# --- Renderização da Página ---
+st.title("🔬 2. Pré-processamento e Criação do Stream")
 
-# Função de Pré-processamento (Esta função deve refletir a lógica de 'criar_stream'
-# e seria idealmente colocada em utils/preprocessing.py, mas a lógica de UI está aqui)
-def perform_stream_preprocessing(df, target_col, timestamp_col, cols_para_remover, imputation_method, features_selecionadas=None):
-    """Simula a lógica do pipeline 'criar_stream' para preparar o DataFrame."""
-    
-    # 1. Copia e Garante Nomes Limpos (já deve vir limpo, mas é uma segurança)
-    df_processed = df.copy()
-    df_processed.columns = [col.strip().lower() for col in df_processed.columns]
-    
-    # 2. Tratar Infinitos
-    df_processed.replace([np.inf, -np.inf], np.nan, inplace=True)
-    
-    # 3. Ordenar por Timestamp
-    if timestamp_col in df_processed.columns:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # Força coerção de erro: datas inválidas viram NaT
-            df_processed[timestamp_col] = pd.to_datetime(df_processed[timestamp_col], errors='coerce') 
-        
-        if not df_processed[timestamp_col].isnull().all():
-            df_processed.sort_values(by=timestamp_col, inplace=True)
-            df_processed.reset_index(drop=True, inplace=True)
+# --- Verificação de Arquivo ---
+filepath = st.session_state.get('file_to_analyze')
+all_cols, cols_to_pre_remove = [], []
+file_selected = False
+placeholder_options = ['(Selecione um arquivo na Etapa 1)'] 
 
-    # 4. Limpeza e Preparação de X/y
-    
-    # Separar Target (y)
-    if target_col not in df_processed.columns:
-        st.error(f"Erro: Coluna de rótulo '{target_col}' não encontrada após a limpeza.")
-        return None, None
-        
-    y_data_df = df_processed[target_col]
-    
-    # Remover colunas desnecessárias (target, timestamp e colunas a remover)
-    todas_cols_para_remover = [target_col, timestamp_col] + [col.strip().lower() for col in cols_para_remover]
-    cols_existentes_para_remover = [col for col in todas_cols_para_remover if col in df_processed.columns]
-    
-    X_data_df = df_processed.drop(columns=cols_existentes_para_remover, errors='ignore')
-
-    # Garantir X numérico
-    X_data_df_numeric = X_data_df.select_dtypes(include=np.number)
-    non_numeric_cols = X_data_df.select_dtypes(exclude=np.number).columns.tolist()
-    
-    if non_numeric_cols:
-        st.warning(f"Removendo {len(non_numeric_cols)} colunas não numéricas que sobraram (ex: {non_numeric_cols[:3]}).")
-    
-    # 5. Imputar NaNs
-    nan_counts = X_data_df_numeric.isnull().sum().sum()
-    X_data_df_cleaned = X_data_df_numeric.copy()
-    
-    if nan_counts > 0:
-        if imputation_method == 'Mediana':
-            X_data_df_cleaned = X_data_df_numeric.fillna(X_data_df_numeric.median()).fillna(0)
-        elif imputation_method == 'Média':
-            X_data_df_cleaned = X_data_df_numeric.fillna(X_data_df_numeric.mean()).fillna(0)
-        # Adicionei Moda e Constante aqui para evitar erros de referência, mas mantive a lógica de média/mediana
-        elif imputation_method == 'Moda':
-            X_data_df_cleaned = X_data_df_numeric.fillna(X_data_df_numeric.mode().iloc[0]).fillna(0)
-        elif imputation_method == 'Valor Constante (0)':
-            X_data_df_cleaned = X_data_df_numeric.fillna(0)
-            
-        st.info(f"Imputados {nan_counts} valores nulos/infinitos com **{imputation_method}**.")
+if filepath and os.path.exists(filepath):
+    df_sample, all_cols, cols_to_pre_remove = load_sample_df(filepath)
+    if df_sample is not None:
+        file_selected = True 
     else:
-        st.info("Nenhum valor nulo/infinito encontrado nas colunas numéricas.")
-
-    # 6. Seleção de Features Finais
-    if features_selecionadas:
-        features_selecionadas_clean = [col.strip().lower() for col in features_selecionadas]
-        features_existentes = [col for col in features_selecionadas_clean if col in X_data_df_cleaned.columns]
-        
-        if features_existentes:
-            X_data_df_final = X_data_df_cleaned[features_existentes]
-            st.success(f"Seleção de features aplicada: {len(features_existentes)} colunas mantidas.")
-        else:
-            st.error("Nenhuma das features selecionadas foi encontrada. Usando todas as colunas numéricas limpas.")
-            X_data_df_final = X_data_df_cleaned
-    else:
-        X_data_df_final = X_data_df_cleaned
-        st.info("Nenhuma seleção específica de features: usando todas as colunas numéricas limpas.")
-
-    # Retorna DataFrame X final e a Série y (target)
-    return X_data_df_final, y_data_df
-
-
-# ----------------------------------------------------------------------
-# --- INTERFACE STREAMLIT ---
-# ----------------------------------------------------------------------
-
-st.title("⚙️ Pré-processamento do Dataset")
-st.write("Configure os passos de limpeza e seleção de features antes de criar o stream.")
-
-# Verifica se os dados originais foram carregados
-df_original_data = st.session_state.get('df_original')
-if df_original_data is None:
-    st.warning("⚠️ Por favor, primeiro selecione e carregue um dataset na aba **'Base de Dados'**.")
-    st.stop()
-
-# Assume que o df_original é o DataFrame limpo (colunas em minúsculas e sem espaços)
-df = df_original_data.copy()
-all_cols = list(df.columns)
-
-st.info(f"Dataset carregado: **{st.session_state.selected_csv_name}** ({df.shape[0]} linhas).")
-
-# --- 1. CONFIGURAÇÃO DE COLUNAS ESSENCIAIS ---
-st.subheader("1. Configurações Essenciais")
-
-col_target, col_timestamp = st.columns(2)
-
-# --- INÍCIO DA ALTERAÇÃO SOLICITADA: TROCA st.text_input por st.selectbox ---
-
-# Coluna de Rótulo (Target) - AGORA COM SELECTBOX
-with col_target:
-    default_target = st.session_state.get('target_col', TARGET_COL_DEFAULT)
-    default_index_target = all_cols.index(default_target) if default_target in all_cols else 0
-    
-    target_col = st.selectbox("Nome da Coluna de Rótulo (Target)", 
-                              options=all_cols,
-                              index=default_index_target)
-    st.session_state.target_col = target_col # Salva para reuso
-
-# Coluna de Timestamp (Ordenação) - AGORA COM SELECTBOX
-with col_timestamp:
-    default_timestamp = st.session_state.get('timestamp_col', TIMESTAMP_COL_DEFAULT)
-    timestamp_options = [None] + all_cols # Inclui None para não ordenar
-
-    if default_timestamp is None:
-        default_index_timestamp = 0
-    elif default_timestamp in all_cols:
-        default_index_timestamp = all_cols.index(default_timestamp) + 1 # +1 devido ao None no início
-    else:
-        default_index_timestamp = 0
-    
-    timestamp_col = st.selectbox("Coluna para ORDENAÇÃO (Timestamp)", 
-                                 options=timestamp_options,
-                                 index=default_index_timestamp,
-                                 help="Opcional. O DataFrame será ordenado por esta coluna.")
-    st.session_state.timestamp_col = timestamp_col # Salva para reuso
-
-# --- FIM DA ALTERAÇÃO SOLICITADA ---
-
-
-# --- 2. SELEÇÃO E REMOÇÃO DE COLUNAS ---
-st.subheader("2. Seleção de Features")
-
-col_keep, col_remove = st.columns(2)
-
-# Colunas disponíveis para manipulação (exclui Target e Timestamp)
-excluded_from_available = [target_col]
-if timestamp_col:
-    excluded_from_available.append(timestamp_col)
-    
-all_available_cols = [c for c in all_cols if c not in excluded_from_available]
-
-# Colunas a Remover (não-features)
-with col_remove:
-    # Filtra colunas que não são target ou timestamp, para sugerir remoção
-    removable_cols_candidates = all_available_cols
-    
-    # Blinda o default para evitar StreamlitAPIException (mantendo a lógica de persistência)
-    initial_cols_to_remove = st.session_state.get('cols_to_remove', [])
-    cols_to_remove_defaults = [c for c in initial_cols_to_remove if c in removable_cols_candidates]
-    
-    cols_to_remove = st.multiselect("Colunas a REMOVER (ex: IDs, IPs)", 
-                                    options=removable_cols_candidates,
-                                    default=cols_to_remove_defaults) # Usa os defaults filtrados
-    st.session_state.cols_to_remove = cols_to_remove
-
-# Colunas a Manter (Seleção de Features Opcional)
-with col_keep:
-    # Colunas que sobrariam após a remoção básica: LÓGICA DE EXCLUSÃO CRUZADA RESTAURADA
-    remaining_cols_candidates = [c for c in all_available_cols if c not in cols_to_remove]
-    
-    # Blinda o default para evitar StreamlitAPIException
-    initial_features_to_keep = st.session_state.get('features_to_keep', [])
-    features_to_keep_defaults = [c for c in initial_features_to_keep if c in remaining_cols_candidates]
-    
-    # Padrão: Se não há persistência válida, usa TODAS as remanescentes como padrão (lógica inicial)
-    default_features = features_to_keep_defaults or remaining_cols_candidates
-    
-    features_to_keep = st.multiselect("Features a MANTER (Seleção de features)", 
-                                      options=remaining_cols_candidates, # Lista que exclui as removidas
-                                      default=default_features,
-                                      help="Selecione um subconjunto de features numéricas para o modelo. Se vazio, todas as colunas numéricas remanescentes serão usadas.")
-    st.session_state.features_to_keep = features_to_keep
-
-# --- AVISO SOBRE DADOS NÃO USADOS ---
-features_not_kept = [c for c in remaining_cols_candidates if c not in features_to_keep]
-if features_not_kept:
-    st.markdown("##### ⚠️ Aviso de Features Não Usadas:")
-    st.warning(f"As features desmarcadas (`{', '.join(features_not_kept)}`) **NÃO** serão incluídas no conjunto final de Features (X).")
+        st.error(f"Erro ao ler o arquivo selecionado: {filepath}")
 else:
-    st.info("Todas as features remanescentes foram selecionadas para manter.")
+    if not filepath:
+        st.warning("NOTA: Nenhum arquivo de dados selecionado. Por favor, vá para a página '1. Base de Dados' e selecione um arquivo no Passo 5 para habilitar esta página.")
+    else:
+        st.error(f"Arquivo selecionado '{filepath}' não foi encontrado. Retorne à página anterior e selecione um arquivo válido.")
 
-final_cols_to_remove = cols_to_remove 
-
-
-# --- 3. TRATAMENTO DE NULOS (IMPUTAÇÃO) ---
-st.subheader("3. Tratamento de Valores Ausentes (NaN)")
-
-# Mediana é geralmente a mais robusta para datasets com outliers (comuns em tráfego de rede)
-imputation_method = st.selectbox("Método de Imputação de NaN/Infinito", 
-                                 options=['Mediana', 'Média', 'Moda', 'Valor Constante (0)'],
-                                 index=['Mediana', 'Média', 'Moda', 'Valor Constante (0)'].index(st.session_state.get('imputation_method', 'Mediana')),
-                                 help="A Mediana é mais robusta contra outliers.")
-st.session_state.imputation_method = imputation_method
-
-
-# --- 4. BOTÃO DE PRÉ-PROCESSAMENTO ---
 st.markdown("---")
-if st.button("Aplicar Configurações e Preparar Stream", type="primary"):
-    
-    # Validação Mínima
-    if not target_col or target_col not in all_cols:
-        st.error(f"A coluna de rótulo '{target_col}' não foi encontrada ou está vazia. Verifique o nome.")
-        st.stop()
-        
-    if timestamp_col and timestamp_col not in all_cols:
-        st.warning(f"A coluna de tempo '{timestamp_col}' não foi encontrada.")
 
-    with st.spinner("Criando o DataFrame de Features (X) e Rótulos (y)..."):
+# --- Passo 2: Configuração dos Parâmetros ---
+st.header("Configuração do Pipeline", divider="rainbow")
+st.markdown("Defina os parâmetros para limpar os dados e criar o *stream* de dados para o treinamento. As opções ficarão habilitadas assim que um arquivo válido for selecionado na Etapa 1.")
+
+with st.container(border=True):
+    st.subheader("Passo A: Definição das Colunas Principais")
+    st.markdown("Defina as colunas essenciais para o modelo: o que ele deve prever (Alvo) e, opcionalmente, a ordem em que os dados chegaram (Timestamp).")
+    
+    label_idx = find_default_index(all_cols, 'Label')
+    target_col = st.selectbox(
+        "Selecione a Coluna Alvo (Label)", 
+        options=all_cols if file_selected else placeholder_options, 
+        index=label_idx if file_selected else 0,
+        help="Esta é a coluna que o modelo tentará prever (ex: 'Label', 'Attack_Type').",
+        disabled=not file_selected
+    )
+    
+    ts_idx = find_default_index(all_cols, 'Timestamp')
+    timestamp_col = st.selectbox(
+        "Selecione a Coluna de Timestamp (Opcional)", 
+        options=['Nenhuma'] + (all_cols if file_selected else []), 
+        index=ts_idx + 1 if file_selected and ts_idx >= 0 else 0,
+        help="Se selecionado, os dados serão ordenados por esta coluna para simular um stream em ordem cronológica. Se 'Nenhuma', a ordem do CSV será usada.",
+        disabled=not file_selected
+    )
+    timestamp_col = None if timestamp_col == 'Nenhuma' else timestamp_col
+
+with st.container(border=True):
+    st.subheader("Passo B: Limpeza de Dados e Imputação")
+    st.markdown("Defina como o pipeline deve tratar dados ausentes, infinitos ou colunas irrelevantes.")
+
+    available_cols = [col for col in all_cols if col != target_col and col != timestamp_col]
+    cols_to_pre_remove_default = [col for col in cols_to_pre_remove if col in available_cols]
+
+    cols_to_remove = st.multiselect(
+        "Colunas para Remover (Pré-filtragem)",
+        options=available_cols if file_selected else placeholder_options,
+        default=cols_to_pre_remove_default if file_selected else [],
+        help="Colunas que devem ser removidas ANTES da seleção de features (Ex: IDs, IPs, ou colunas não-numéricas).",
+        disabled=not file_selected
+    )
+    
+    imputation_method = st.selectbox(
+        "Método de Imputação (para Nulos/Infinitos)",
+        options=['Mediana', 'Média', 'Preencher com 0', 'Remover Linhas'],
+        index=0,
+        help="Como o pipeline deve tratar células vazias (NaN) ou infinitas (inf) nos dados numéricos.",
+        disabled=not file_selected
+    )
+
+with st.container(border=True):
+    st.subheader("Passo C: Seleção de Features (Opcional)")
+    st.markdown("""
+    Após a limpeza, podemos reduzir ainda mais o número de colunas (features) para acelerar o treinamento e, potencialmente, melhorar a precisão.
+    """)
+    
+    feature_selection_method = st.radio(
+        "Escolha o método de seleção de features:",
+        ['Seleção Manual', 'Seleção Automática (Algoritmo)'],
+        index=0,
+        horizontal=True,
+        disabled=not file_selected
+    )
+    
+    available_features = [col for col in available_cols if col not in cols_to_remove]
+    
+    # --- Valores Padrão ---
+    manual_features_list = []
+    auto_algo = 'Random Forest Importance'
+    n_features_auto = 10
+    rf_n_estimators = 100
+    rf_iterations = 1
+    rf_max_depth = None
+    rf_min_samples_leaf = 1
+    use_max_depth_none = True
+    skb_score_func_name = 'f_classif'
+    pca_svd_solver = 'auto'
+    pca_whiten = False
+
+    if feature_selection_method == 'Seleção Manual':
+        st.markdown("Selecione manualmente as features que você deseja manter. **Se este campo ficar vazio, todas as features restantes (não removidas) serão usadas.**")
+        manual_features_list = st.multiselect(
+            "Manter APENAS estas features:",
+            options=available_features if file_selected else placeholder_options,
+            default=[],
+            help="Se você preencher este campo, o pipeline irá descartar TODAS as colunas, exceto as que você selecionar aqui.",
+            disabled=not file_selected
+        )
+    
+    elif feature_selection_method == 'Seleção Automática (Algoritmo)':
+        st.markdown("Escolha um algoritmo para pontuar e selecionar as melhores features automaticamente.")
+        auto_algo = st.selectbox(
+            "Algoritmo de Seleção/Extração",
+            options=[
+                'Random Forest Importance', 
+                'SelectKBest (ANOVA)', 
+                'PCA (Extração de Componentes)'
+            ],
+            index=0,
+            disabled=not file_selected
+        )
         
-        # Chama a função de pré-processamento
-        X_data_df, y_data_series = perform_stream_preprocessing(
-            df=df,
-            target_col=target_col,
-            timestamp_col=timestamp_col,
-            cols_para_remover=final_cols_to_remove,
-            imputation_method=imputation_method,
-            features_selecionadas=features_to_keep
+        # --- NOVOS WIDGETS DE HIPERPARÂMETROS (Request 1 e 3) ---
+        if auto_algo == 'Random Forest Importance':
+            st.markdown("##### Hiperparâmetros do Random Forest")
+            rf_iterations = st.number_input(
+                "Número de Iterações (para média)",
+                min_value=1, max_value=10, value=1, step=1,
+                disabled=not file_selected,
+                help="Rodar o algoritmo N vezes e tirar a média das importâncias. Aumenta a estabilidade, mas também o tempo de processamento."
+            )
+            rf_n_estimators = st.number_input(
+                "Número de Árvores por Iteração (n_estimators)",
+                min_value=10, max_value=1000, value=100, step=10,
+                disabled=not file_selected,
+                help="Número de árvores na floresta. Valores maiores são mais precisos, mas levam mais tempo."
+            )
+            use_max_depth_none = st.checkbox("Usar max_depth=None (sem limite)", value=True, disabled=not file_selected)
+            rf_max_depth_value = st.number_input(
+                "Profundidade Máxima da Árvore (max_depth)",
+                min_value=1, value=10, step=1,
+                disabled=use_max_depth_none or not file_selected,
+                help="Limite a profundidade de cada árvore. Desmarque o checkbox acima para definir um limite."
+            )
+            rf_max_depth = None if use_max_depth_none else rf_max_depth_value
+            rf_min_samples_leaf = st.number_input(
+                "Mínimo de Amostras por Folha (min_samples_leaf)",
+                min_value=1, value=1, step=1,
+                disabled=not file_selected,
+                help="O número mínimo de amostras necessário para ser um nó folha."
+            )
+        
+        elif auto_algo == 'SelectKBest (ANOVA)':
+            st.markdown("##### Hiperparâmetros do SelectKBest")
+            skb_score_func_str = st.selectbox(
+                "Função de Pontuação (score_func)",
+                options=["ANOVA (f_classif)", "Informação Mútua (mutual_info_classif)"],
+                index=0,
+                disabled=not file_selected,
+                help="O teste estatístico usado para pontuar as features. 'ANOVA' é mais rápido, 'Informação Mútua' pode capturar relações não-lineares."
+            )
+            # Extrai o nome da função real
+            skb_score_func_name = skb_score_func_str.split(' ')[1].replace('(', '').replace(')', '')
+        
+        elif auto_algo == 'PCA (Extração de Componentes)':
+            st.markdown("##### Hiperparâmetros do PCA")
+            pca_svd_solver = st.selectbox(
+                "SVD Solver (svd_solver)",
+                options=['auto', 'full', 'randomized'],
+                index=0,
+                disabled=not file_selected,
+                help="O método que o PCA usa para decompor os dados. 'randomized' costuma ser mais rápido em datasets grandes."
+            )
+            pca_whiten = st.checkbox("Normalizar Componentes (whiten=True)", value=False, disabled=not file_selected,
+                                     help="Se marcado, normaliza os componentes resultantes. Pode ser útil para alguns algoritmos.")
+        # --- FIM DOS NOVOS WIDGETS ---
+            
+        n_features_auto = st.number_input(
+            f"Número de features/componentes a manter:",
+            min_value=1,
+            max_value=len(available_features) if file_selected and available_features else 1,
+            value=min(10, len(available_features)) if available_features else 1, 
+            step=1,
+            disabled=not file_selected
         )
 
-    if X_data_df is not None and y_data_series is not None:
-        st.session_state.X_features = X_data_df 
-        st.session_state.y_target = y_data_series 
-        
-        # Armazenar o DataFrame 'df_processed' para visualização
-        df_processed_preview = X_data_df.copy()
-        df_processed_preview[target_col] = y_data_series.values
-        st.session_state.df_processed = df_processed_preview
-        
-        st.success("Pré-processamento de Features e Rótulos concluído!")
-        
-        st.subheader("Features Prontas (X)")
-        st.info(f"O conjunto de features (X) final tem {X_data_df.shape[0]} amostras e {X_data_df.shape[1]} features.")
-        st.dataframe(X_data_df.head(), width='stretch')
-        
-        st.subheader("Rótulos Prontos (y)")
-        st.info(f"O conjunto de rótulos (y) final tem {y_data_series.shape[0]} amostras.")
-        st.dataframe(pd.DataFrame(y_data_series).head(), width='stretch')
+# --- Passo 3: Execução do Pipeline ---
+st.header("Execução do Pipeline", divider="rainbow")
 
+col1_btn, col2_btn, col3_btn = st.columns([1, 2, 1])
+with col2_btn:
+    start_button_clicked = st.button(
+        "🚀 Iniciar Pré-processamento e Criar Stream", 
+        type="primary", 
+        disabled=not file_selected
+    )
+
+if start_button_clicked:
+    # Salva as escolhas no session_state
+    st.session_state.target_col = target_col
+    st.session_state.timestamp_col = timestamp_col
+    st.session_state.cols_to_remove = cols_to_remove
+    st.session_state.imputation_method = imputation_method
+    
+    if feature_selection_method == 'Seleção Manual':
+        st.session_state.feature_selection_method = 'Seleção Manual'
     else:
-        st.error("O Pré-processamento falhou. Verifique as colunas essenciais.")
+        st.session_state.feature_selection_method = auto_algo
+        
+    st.session_state.n_features_auto = n_features_auto
+    st.session_state.manual_features_list = manual_features_list
+    
+    # --- NOVO: Salva os hiperparâmetros ---
+    st.session_state.rf_n_estimators = rf_n_estimators
+    st.session_state.rf_iterations = rf_iterations
+    st.session_state.rf_max_depth = rf_max_depth
+    st.session_state.rf_min_samples_leaf = rf_min_samples_leaf
+    st.session_state.skb_score_func_name = skb_score_func_name
+    st.session_state.pca_svd_solver = pca_svd_solver
+    st.session_state.pca_whiten = pca_whiten
+    
+    log_placeholder = st.empty() 
+    
+    with st.spinner("Executando pipeline de pré-processamento... Isso pode levar alguns minutos."):
+        stream, le, X_data_df_cleaned, df_processed, log_messages, feature_report = create_stream_pipeline(
+            file_path=filepath,
+            target_label_col=target_col,
+            timestamp_col=timestamp_col,
+            cols_para_remover=cols_to_remove,
+            imputation_method=imputation_method,
+            feature_selection_method=st.session_state.feature_selection_method, 
+            n_features_auto=n_features_auto,
+            manual_features_list=manual_features_list,
+            # --- NOVO: Passa os hiperparâmetros ---
+            n_estimators=rf_n_estimators,
+            rf_max_depth=rf_max_depth,
+            rf_min_samples_leaf=rf_min_samples_leaf,
+            rf_iterations=rf_iterations,
+            skb_score_func_name=skb_score_func_name,
+            pca_svd_solver=pca_svd_solver,
+            pca_whiten=pca_whiten
+        )
+    
+    log_placeholder.text_area("Logs do Processamento", "\n".join(log_messages), height=300)
+    
+    if stream:
+        st.success("Pipeline executado com sucesso! O Stream está pronto.")
+        
+        st.session_state.stream_data = stream
+        st.session_state.label_encoder = le
+        st.session_state.df_processed = df_processed 
+        st.session_state.X_final_df = X_data_df_cleaned 
+        st.session_state.feature_importance_report = feature_report
+        
+        st.subheader("Análise Pós-Processamento")
+        
+        if st.session_state.feature_importance_report:
+            if st.session_state.feature_selection_method == 'PCA (Extração de Componentes)':
+                chart_title = f"Variância Explicada (Top {st.session_state.n_features_auto} Componentes)"
+                score_title = "Variância Explicada"
+            else:
+                chart_title = f"Importância das Features (Top {st.session_state.n_features_auto})"
+                score_title = "Score de Importância"
 
-# --- LÓGICA DE EXIBIÇÃO DE DADOS PROCESSADOS (Se já existirem) ---
-elif st.session_state.get('df_processed') is not None:
-    st.subheader("Dados Atualmente Processados (Prévia)")
-    st.info(f"DataFrame processado pronto para a próxima etapa: **{st.session_state.df_processed.shape[0]} amostras**.")
-    st.dataframe(st.session_state.df_processed.head(), width='stretch')
+            with st.expander(chart_title, expanded=True):
+                report_dict = st.session_state.feature_importance_report
+                df_importance = pd.DataFrame(
+                    list(report_dict.items()), 
+                    columns=['Feature', 'Score']
+                ).sort_values(by='Score', ascending=False)
+                
+                df_importance_top = df_importance.head(st.session_state.n_features_auto)
+                
+                chart = alt.Chart(df_importance_top).mark_bar().encode(
+                    x=alt.X('Score:Q', title=score_title),
+                    y=alt.Y('Feature:N', sort='-x'), 
+                    tooltip=['Feature', 'Score']
+                ).interactive()
+                
+                st.altair_chart(chart, use_container_width=True)
+        
+        final_features = X_data_df_cleaned.columns.tolist()
+        with st.expander(f"Lista Final de Features ({len(final_features)})", expanded=False):
+            st.code(f"{final_features}")
+            
+        st.markdown("##### Distribuição de Classes (Pós-Processamento)")
+        report_df = df_processed.loc[X_data_df_cleaned.index][target_col].value_counts().reset_index()
+        report_df.columns = [target_col, 'Contagem']
+        
+        bar_chart = alt.Chart(report_df).mark_bar().encode(
+            x=alt.X(target_col, sort=None),
+            y=alt.Y('Contagem'),
+            color=alt.Color(target_col, legend=alt.Legend(title="Legenda", orient='right')),
+            tooltip=[target_col, 'Contagem']
+        ).interactive()
+        st.altair_chart(bar_chart, use_container_width=True)
+        
+        if timestamp_col:
+            st.markdown("##### Distribuição de Ataques ao Longo do Tempo (Contínuo)")
+            
+            try:
+                df_plot = df_processed.copy()
+                df_plot['time_bin'] = df_plot[timestamp_col].dt.floor('T')
+                df_agg = df_plot.groupby(['time_bin', target_col]).size().reset_index(name='Contagem')
+                
+                area_chart = alt.Chart(df_agg).mark_area().encode(
+                    x=alt.X('time_bin', title="Timestamp", axis=alt.Axis(format="%H:%M")),
+                    y=alt.Y('Contagem', stack='zero'), 
+                    color=alt.Color(target_col, legend=alt.Legend(title="Legenda", orient='right')),
+                    tooltip=[alt.Tooltip('time_bin', format="%H:%M"), target_col, 'Contagem']
+                ).interactive()
+                
+                st.altair_chart(area_chart, use_container_width=True)
+            except Exception as e:
+                st.warning(f"Não foi possível gerar o gráfico de distribuição ao longo do tempo: {e}")
+            
+        
+        st.info("💾 **Próximo Passo:** Os dados processados e o *stream* foram salvos na sessão.\n\nClique em **'3. Treinamento'** na barra lateral para continuar.")
+        
+    else:
+        st.error("Ocorreu um erro durante o processamento. Verifique os logs acima para mais detalhes.")

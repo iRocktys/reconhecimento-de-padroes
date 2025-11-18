@@ -1,9 +1,7 @@
 import streamlit as st
 import os
 import pandas as pd
-import altair as alt # <-- MUDANÇA 1: Nova importação
-
-# --- Imports (sem alteração) ---
+import altair as alt 
 from utils.data_loader import (
     ATTACK_ORDER, 
     DOWNSAMPLE_FACTORS, 
@@ -15,16 +13,13 @@ from utils.data_loader import (
 )
 from utils.style import load_custom_css
 load_custom_css("style.css")
-# --- Fim dos imports ---
 
-# --- ALTERAÇÃO DE LAYOUT AQUI (Request 1) ---
 st.set_page_config(
     page_title="Carregamento de Dados", 
     page_icon="📦",
-    layout="centered" # Mudado de "wide" para "centered"
+    layout="centered" 
 )
 
-# --- Gerenciamento de Estado (sem alteração) ---
 if 'processing' not in st.session_state:
     st.session_state.processing = False
 if 'processed_filepath' not in st.session_state:
@@ -44,8 +39,6 @@ def cancel_processing():
 
 def get_state():
     return st.session_state.processing
-
-# --- Funções da Página (sem alteração) ---
 
 def render_sliders(selected_day):
     attack_files = ATTACK_ORDER[selected_day]
@@ -79,12 +72,7 @@ def render_sliders(selected_day):
         
     return dynamic_factors
 
-# --- FUNÇÃO ATUALIZADA (Request 2 e 3) ---
 def display_report():
-    """
-    Exibe o relatório do arquivo que está em st.session_state.file_to_analyze
-    """
-    
     filepath = st.session_state.get('file_to_analyze')
     
     if not filepath:
@@ -104,11 +92,6 @@ def display_report():
         st.warning(f"O arquivo selecionado '{filepath}' está vazio.")
     else:
         st.success(f"Exibindo análise para: **{filepath}**")
-        
-        # --- ALTERAÇÃO PRINCIPAL AQUI ---
-        # Removido o st.bar_chart simples.
-        # Criamos um gráfico Altair mais robusto.
-        
         st.subheader("Visualização da Distribuição")
         
         chart = alt.Chart(report_df).mark_bar().encode(
@@ -122,7 +105,7 @@ def display_report():
         ).interactive() # Permite zoom e pan
         
         # Exibe o gráfico Altair
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width='stretch')
         
         # Tabela (st.dataframe) vem em segundo
         st.subheader("Contagem de Amostras")
@@ -132,9 +115,7 @@ def display_report():
             column_config={
                 "Contagem": st.column_config.NumberColumn(format="%d")
             }
-            # 'use_container_width=True' removido, desnecessário no layout centered
         )
-        # --- FIM DA ALTERAÇÃO ---
         
         st.info(f"💾 **Próximo Passo:** O arquivo `{filepath}` está pronto.\n\nClique em **'2. Pré-processamento'** na barra lateral para continuar.")
 

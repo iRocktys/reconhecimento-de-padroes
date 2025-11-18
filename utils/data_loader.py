@@ -8,7 +8,7 @@ PANDAS_CHUNK_SIZE = 50000
 ATTACK_LABEL_COL = 'Label' # O nome "limpo" que queremos
 COLUMNS_TO_DROP = [
     'Unnamed: 0', 'Flow ID', 'Source IP', 'Source Port', 
-    'Destination IP', 'Destination Port', 'Timestamp', 
+    'Destination IP', 'Destination Port', 
     'SimillarHTTP', 'Fwd Header Length.1'
 ]
 MIN_SAMPLES_PER_CHUNK = 1000
