@@ -2,9 +2,8 @@ import pandas as pd
 import numpy as np
 import random
 from collections import deque
-import streamlit as st # Importa streamlit para o cache
+import streamlit as st 
 
-# Importações do capymoa
 from capymoa.classifier import (
     LeveragingBagging,
     HoeffdingTree,
@@ -26,7 +25,7 @@ def get_attack_summary_table(df_processed, target_col):
     attacks_df = df_processed[df_processed[target_col] != 'BENIGN'].copy()
     
     if attacks_df.empty:
-        st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
+        # st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
         return pd.DataFrame(columns=["Ataque", "Início (Instância)", "Fim (Instância)", "Total de Amostras"])
 
     attacks_df.reset_index(inplace=True) 
@@ -42,11 +41,6 @@ def get_attack_summary_table(df_processed, target_col):
     return summary
 
 def get_models(schema, global_params, models_to_run, all_model_params):
-    """
-    Constrói dinamicamente o dicionário de modelos, avaliadores e
-    detectores de drift com base nos parâmetros da UI.
-    """
-    
     window_size = global_params.get("WINDOW_SIZE", 500)
     delay_length = global_params.get("DELAY_LENGTH", None)
     
@@ -177,11 +171,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
     return models_to_test, log_msg
 
 def run_evaluation_stream(stream, models_to_evaluate, eval_params):
-    """
-    Executa o loop de avaliação manual (baseado no seu código)
-    como um 'generator', yield resultados periodicamente.
-    """
-    
     MAX_INSTANCES = eval_params.get("MAX_INSTANCES", 10000)
     WINDOW_SIZE = eval_params.get("WINDOW_SIZE", 500)
     DELAY_LENGTH = eval_params.get("DELAY_LENGTH", None)
@@ -273,42 +262,30 @@ def run_evaluation_stream(stream, models_to_evaluate, eval_params):
             
         count += 1
     
-    # --- 6. Finalização ---
-    
-    # --- NOVO: Função helper (Request 1) ---
-    def get_metric(metric_func, weighted=False):
-        """Chama a métrica e retorna 0.0 se for None ou NaN."""
+    # --- Função helper CORRIGIDA (Request 1) ---
+    def get_metric(metric_func):
+        """
+        Chama a métrica e retorna 0.0 se for None ou NaN.
+        Não passa argumentos extras que possam causar erro.
+        """
         try:
-            # Tenta chamar com 'weighted=True' se for uma métrica
-            # que suporta isso (F1, Precision, Recall)
-            if weighted:
-                val = metric_func(weighted=True)
-            else:
-                val = metric_func()
-            
+            val = metric_func() # Chama sem argumentos (ex: .f1_score())
             return val if pd.notna(val) else 0.0
         except Exception:
-            # Se falhar (ex: 'accuracy' não tem 'weighted'), tenta sem
-            try:
-                val = metric_func()
-                return val if pd.notna(val) else 0.0
-            except Exception:
-                 return 0.0
-    # --- FIM DA ALTERAÇÃO ---
+            return 0.0
+    # -------------------------------------------
 
     final_report = {}
     for model_name, state in models_to_evaluate.items():
         evaluator = state["evaluator"]
         
-        # --- ALTERAÇÃO (Request 1): Usa a função helper ---
         final_report[model_name] = {
             "Acurácia": get_metric(evaluator.accuracy),
-            "F1-Score": get_metric(evaluator.f1_score, weighted=True),
-            "Precision": get_metric(evaluator.precision, weighted=True),
-            "Recall": get_metric(evaluator.recall, weighted=True),
+            "F1-Score": get_metric(evaluator.f1_score),   # Removido weighted=True
+            "Precision": get_metric(evaluator.precision), # Removido weighted=True
+            "Recall": get_metric(evaluator.recall),       # Removido weighted=True
             "Kappa": get_metric(evaluator.kappa)
         }
-        # --- FIM DA ALTERAÇÃO ---
     
     yield {
         "status": "completed", 

@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 import altair as alt 
 import os
+import warnings # Importa módulo de warnings
+
+# --- Request 2: Silenciar Warnings no Terminal ---
+warnings.filterwarnings("ignore") # Ignora avisos para manter o terminal limpo
+
 from utils.style import load_custom_css
 from utils.evaluation import run_evaluation_stream, get_attack_summary_table 
 import math 
@@ -15,7 +20,6 @@ st.set_page_config(
 load_custom_css("style.css")
 
 def chunk_list(lst, n):
-    """Divide uma lista 'lst' em pedaços de tamanho 'n'."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
@@ -43,7 +47,7 @@ target_col = st.session_state.target_col
 if 'evaluation_results' not in st.session_state:
     st.session_state.evaluation_results = None
 
-# --- Tabela de Ataques (Request 3) ---
+# --- Tabela de Ataques ---
 with st.expander("Ver Resumo dos Ataques no Stream"):
     st.markdown("Esta tabela mostra onde cada ataque (não-BENIGN) começa e termina no *stream* de dados processado.")
     summary_table = get_attack_summary_table(df_processed, target_col)
@@ -69,7 +73,6 @@ if start_button_clicked:
     progress_text = st.empty()
     progress_bar = st.progress(0, text="Iniciando...")
     
-    # Lógica de 4 Gráficos por Linha
     live_placeholders = {}
     model_chunks = list(chunk_list(models_to_run, 4))
     
@@ -180,7 +183,6 @@ if st.session_state.evaluation_results:
     # Formata as colunas para 4 casas decimais
     for col in ["Acurácia", "F1-Score", "Precision", "Recall", "Kappa"]:
         if col in df_metrics_final.columns:
-            # Garante que é numérico antes de formatar
             df_metrics_final[col] = pd.to_numeric(df_metrics_final[col], errors='coerce').fillna(0.0)
             df_metrics_final[col] = df_metrics_final[col].map('{:,.4f}'.format)
 
@@ -201,14 +203,12 @@ if st.session_state.evaluation_results:
         st.subheader("Métricas Cumulativas Finais")
         st.dataframe(df_metrics_final, use_container_width=True, hide_index=True)
 
-    # --- ALTERAÇÃO (Request 2): Layout das Abas Individuais ---
     for i, model_name in enumerate(models_to_run):
         with tabs[i+1]:
             state = models_final_state[model_name]
             
             st.subheader(f"Desempenho: {model_name}")
             
-            # --- Gráfico de Acurácia e Drift (sempre o mesmo) ---
             df_acc_model = df_acc_final[df_acc_final['Modelo'] == model_name]
             drift_points_data = []
             for detector in ["ddm", "adwin", "ABCD"]:
@@ -233,13 +233,11 @@ if st.session_state.evaluation_results:
             else:
                 st.altair_chart(acc_chart_model, use_container_width=True)
 
-            # --- NOVO LAYOUT: Métricas e Gráfico de Drift ---
             col_metrics, col_drift_chart = st.columns([1, 1])
 
             with col_metrics:
                 st.subheader("Métricas Cumulativas Finais")
                 model_metrics = final_report[model_name]
-                # Converte para float para formatação
                 model_metrics_float = {k: float(v) for k, v in model_metrics.items()}
                 
                 st.dataframe(
@@ -257,22 +255,19 @@ if st.session_state.evaluation_results:
                 ]
                 df_drift_counts = pd.DataFrame(drift_counts)
 
-                # Gráfico de Barras
                 bars = alt.Chart(df_drift_counts).mark_bar().encode(
                     x=alt.X('Contagem:Q', title="Total de Drifts"),
                     y=alt.Y('Detector:N', sort=None, title=None),
                     color=alt.Color('Detector', legend=alt.Legend(title="Detector", orient='right'))
                 )
                 
-                # Texto (Rótulos)
                 text = bars.mark_text(
                     align='left',
                     baseline='middle',
-                    dx=3  # Desloca o texto 3 pixels para a direita da barra
+                    dx=3
                 ).encode(
                     text=alt.Text('Contagem:Q')
                 )
                 
                 chart = bars + text
                 st.altair_chart(chart, use_container_width=True)
-            # --- FIM DA ALTERAÇÃO ---
