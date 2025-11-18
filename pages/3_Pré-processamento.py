@@ -56,8 +56,6 @@ else:
     else:
         st.error(f"Arquivo selecionado '{filepath}' não foi encontrado. Retorne à página anterior e selecione um arquivo válido.")
 
-st.markdown("---")
-
 # --- Passo 2: Configuração dos Parâmetros ---
 st.header("Configuração do Pipeline", divider="rainbow")
 st.markdown("Defina os parâmetros para limpar os dados e criar o *stream* de dados para o treinamento. As opções ficarão habilitadas assim que um arquivo válido for selecionado na Etapa 1.")
@@ -225,7 +223,7 @@ with st.container(border=True):
         )
 
 # --- Passo 3: Execução do Pipeline ---
-st.header("Execução do Pipeline", divider="rainbow")
+# st.header("Execução do Pipeline", divider="rainbow")
 
 col1_btn, col2_btn, col3_btn = st.columns([1, 2, 1])
 with col2_btn:
