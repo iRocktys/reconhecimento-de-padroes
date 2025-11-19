@@ -24,11 +24,9 @@ def get_models(schema, global_params, models_to_run, all_model_params):
     """
     
     window_size = global_params.get("WINDOW_SIZE", 500)
-    delay_length = global_params.get("DELAY_LENGTH") # Pode ser None
-    
+    delay_length = global_params.get("DELAY_LENGTH") 
     models_to_test = {}
     
-    # --- 1. LeveragingBagging ---
     if "LeveragingBagging" in models_to_run:
         params = all_model_params.get("LeveragingBagging", {})
         models_to_test["LeveragingBagging"] = {
@@ -56,7 +54,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 2. HoeffdingAdaptiveTree ---
     if "HoeffdingAdaptiveTree" in models_to_run:
         params = all_model_params.get("HoeffdingAdaptiveTree", {})
         models_to_test["HoeffdingAdaptiveTree"] = {
@@ -86,7 +83,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 3. AdaptiveRandomForest ---
     if "AdaptiveRandomForest" in models_to_run:
         params = all_model_params.get("AdaptiveRandomForest", {})
         models_to_test["AdaptiveRandomForest"] = {
@@ -115,7 +111,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 4. HoeffdingTree ---
     if "HoeffdingTree" in models_to_run:
         params = all_model_params.get("HoeffdingTree", {})
         models_to_test["HoeffdingTree"] = {
@@ -145,7 +140,7 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
         
-    # --- NOVO: Adiciona a fila de delay se necessário (Request 2) ---
+    # Adiciona a fila de delay se necessário
     if delay_length is not None and delay_length > 0:
         log_msg = f"Aplicando um delay de {delay_length} instâncias."
         for model_name in models_to_test:

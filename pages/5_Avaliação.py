@@ -2,31 +2,28 @@ import streamlit as st
 import pandas as pd
 import altair as alt 
 import os
-import warnings # Importa módulo de warnings
-
-# --- Request 2: Silenciar Warnings no Terminal ---
-warnings.filterwarnings("ignore") # Ignora avisos para manter o terminal limpo
-
+import warnings 
+warnings.filterwarnings("ignore") 
 from utils.style import load_custom_css
 from utils.evaluation import run_evaluation_stream, get_attack_summary_table 
 import math 
 
-# --- Configuração da Página ---
+# Configuração da Página 
+load_custom_css("style.css")
 st.set_page_config(
-    page_title="Avaliação", 
-    page_icon="📊",
+    page_title="IDS Stream Mining", 
+    page_icon="🛡️",
     layout="wide" 
 )
-load_custom_css("style.css")
 
 def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-# --- Renderização da Página ---
-st.title("📊 5. Avaliação dos Modelos")
+# Renderização da Página 
+st.title("Avaliação dos Modelos")
 
-# --- Passo 1: Verificar se os dados existem ---
+# Verificar se os dados existem 
 if 'stream_data' not in st.session_state or \
    'models_to_evaluate' not in st.session_state or \
    'evaluation_params' not in st.session_state or \
@@ -36,7 +33,7 @@ if 'stream_data' not in st.session_state or \
     st.warning("Por favor, retorne às páginas anteriores e execute todo o fluxo (Base de Dados -> Pré-processamento -> Modelos) antes de executar a avaliação.")
     st.stop()
 
-# --- Carrega os dados da sessão ---
+# Carrega os dados da sessão 
 stream = st.session_state.stream_data
 models_to_evaluate = st.session_state.models_to_evaluate
 eval_params = st.session_state.evaluation_params
@@ -56,7 +53,7 @@ if 'evaluation_results' not in st.session_state:
 #     else:
 #         st.dataframe(summary_table, width='stretch', hide_index=True)
 
-# --- Passo 2: Botão de Execução ---
+# Botão de Execução
 st.header("Executar Avaliação Prequencial", divider="rainbow")
 st.markdown(f"Clique no botão abaixo para iniciar a avaliação de **{len(models_to_run)}** modelo(s) em **{eval_params.get('MAX_INSTANCES'):,}** instâncias.")
 
@@ -66,9 +63,7 @@ with col2:
 
 if start_button_clicked:
     st.session_state.evaluation_results = None
-    
-    st.markdown("---")
-    st.subheader("Resultados em Tempo Real")
+    st.header("Resultados em Tempo Real", divider="rainbow")
     
     progress_text = st.empty()
     progress_bar = st.progress(0, text="Iniciando...")
@@ -161,14 +156,12 @@ if start_button_clicked:
     if st.session_state.evaluation_results:
         st.success("Avaliação finalizada!")
 
-# --- Passo 3: Exibição dos Resultados (Tabs) ---
+# Exibição dos Resultados
 if st.session_state.evaluation_results:
     results = st.session_state.evaluation_results
     final_report = results["final_report"]
     models_final_state = results["models_final_state"]
     instance_history = results["instance_history"]
-    
-    st.markdown("---")
     st.header("Resultados Finais da Avaliação", divider="rainbow")
     
     df_acc_final = pd.DataFrame([
@@ -236,7 +229,7 @@ if st.session_state.evaluation_results:
             col_metrics, col_drift_chart = st.columns([1, 1])
 
             with col_metrics:
-                st.subheader("Métricas Cumulativas Finais")
+                st.subheader("Métricas Cumulativas")
                 model_metrics = final_report[model_name]
                 model_metrics_float = {k: float(v) for k, v in model_metrics.items()}
                 
@@ -247,7 +240,7 @@ if st.session_state.evaluation_results:
                 )
 
             with col_drift_chart:
-                st.subheader("Drifts Detectados (Contagem)")
+                st.subheader("Drifts Detectados")
                 drift_counts = [
                     {"Detector": "DDM", "Contagem": len(state['results_drift_ddm'])},
                     {"Detector": "ADWIN", "Contagem": len(state['results_drift_adwin'])},

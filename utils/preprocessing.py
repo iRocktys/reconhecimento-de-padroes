@@ -3,15 +3,9 @@ import numpy as np
 import warnings
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-# --- NOVO IMPORT ---
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
 from sklearn.decomposition import PCA
-
-# Tenta importar a biblioteca de Stream Mining
-try:
-    from capymoa.stream import NumpyStream
-except ImportError:
-    NumpyStream = None 
+from capymoa.stream import NumpyStream
 
 def create_stream_pipeline(
     file_path, 
@@ -26,20 +20,13 @@ def create_stream_pipeline(
     rf_max_depth=None,
     rf_min_samples_leaf=1,
     rf_iterations=1,
-    # --- NOVOS PARÂMETROS ---
     skb_score_func_name='f_classif',
     pca_svd_solver='auto',
     pca_whiten=False
 ):
-    """
-    Pipeline completo de pré-processamento.
-    Agora aceita hiperparâmetros para TODOS os algoritmos.
-    """
-    
     log_messages = []
     
     def log(message):
-        """Função interna para logar na lista."""
         log_messages.append(message)
 
     if NumpyStream is None:
@@ -124,7 +111,7 @@ def create_stream_pipeline(
                 X_data_df_cleaned = X_data_df_numeric.fillna(X_data_df_numeric.mean()).fillna(0)
             elif imputation_method == 'Preencher com 0':
                 X_data_df_cleaned = X_data_df_numeric.fillna(0)
-            else: # 'Remover Linhas'
+            else: 
                 log(f"    - Removendo {nan_counts} linhas com valores nulos...")
                 X_data_df_cleaned = X_data_df_numeric.dropna()
                 y_data_pd = y_data_pd.loc[X_data_df_cleaned.index]
@@ -179,8 +166,7 @@ def create_stream_pipeline(
             log(f"    - Features selecionadas (baseado na média de {rf_iterations} rodadas): {top_features}")
             X_data_df_cleaned = X_data_df_cleaned[top_features]
 
-        elif feature_selection_method == 'SelectKBest (ANOVA)':
-            # --- LÓGICA ATUALIZADA (Request 1) ---
+        elif feature_selection_method == 'SelectKBest':
             if skb_score_func_name == 'f_classif':
                 score_func = f_classif
                 log_func_name = "ANOVA (f_classif)"
@@ -193,7 +179,6 @@ def create_stream_pipeline(
                 log_func_name = "ANOVA (f_classif)"
 
             log(f"    - Aplicando SelectKBest (função: {log_func_name}) para encontrar as {n_features_auto} melhores features...")
-            # --- FIM DA ALTERAÇÃO ---
             
             k = min(n_features_auto, len(original_features))
             
@@ -208,7 +193,6 @@ def create_stream_pipeline(
             X_data_df_cleaned = pd.DataFrame(X_new, columns=top_features)
 
         elif feature_selection_method == 'PCA (Extração de Componentes)':
-            # --- LÓGICA ATUALIZADA (Request 1) ---
             log(f"    - Aplicando PCA (solver: '{pca_svd_solver}', whiten: {pca_whiten}) para extrair {n_features_auto} componentes...")
             n_components = min(n_features_auto, len(original_features))
             
@@ -218,7 +202,6 @@ def create_stream_pipeline(
                 whiten=pca_whiten,
                 random_state=42
             )
-            # --- FIM DA ALTERAÇÃO ---
             
             X_pca = pca.fit_transform(X_data_df_cleaned)
             

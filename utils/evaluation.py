@@ -15,17 +15,12 @@ from capymoa.drift.detectors import DDM, ADWIN, ABCD
 
 @st.cache_data
 def get_attack_summary_table(df_processed, target_col):
-    """
-    Analisa o DataFrame processado e retorna um resumo CONCATENADO
-    mostrando o início e o fim de cada TIPO de ataque.
-    """
     if target_col not in df_processed.columns:
         return pd.DataFrame(columns=["Ataque", "Início (Instância)", "Fim (Instância)", "Total de Amostras"])
 
     attacks_df = df_processed[df_processed[target_col] != 'BENIGN'].copy()
     
     if attacks_df.empty:
-        # st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
         return pd.DataFrame(columns=["Ataque", "Início (Instância)", "Fim (Instância)", "Total de Amostras"])
 
     attacks_df.reset_index(inplace=True) 
@@ -46,7 +41,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
     
     models_to_test = {}
     
-    # --- 1. LeveragingBagging ---
     if "LeveragingBagging" in models_to_run:
         params = all_model_params.get("LeveragingBagging", {})
         models_to_test["LeveragingBagging"] = {
@@ -72,7 +66,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 2. HoeffdingAdaptiveTree ---
     if "HoeffdingAdaptiveTree" in models_to_run:
         params = all_model_params.get("HoeffdingAdaptiveTree", {})
         models_to_test["HoeffdingAdaptiveTree"] = {
@@ -102,7 +95,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 3. AdaptiveRandomForest ---
     if "AdaptiveRandomForest" in models_to_run:
         params = all_model_params.get("AdaptiveRandomForest", {})
         models_to_test["AdaptiveRandomForest"] = {
@@ -131,7 +123,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
 
-    # --- 4. HoeffdingTree ---
     if "HoeffdingTree" in models_to_run:
         params = all_model_params.get("HoeffdingTree", {})
         models_to_test["HoeffdingTree"] = {
@@ -262,18 +253,12 @@ def run_evaluation_stream(stream, models_to_evaluate, eval_params):
             
         count += 1
     
-    # --- Função helper CORRIGIDA (Request 1) ---
     def get_metric(metric_func):
-        """
-        Chama a métrica e retorna 0.0 se for None ou NaN.
-        Não passa argumentos extras que possam causar erro.
-        """
         try:
-            val = metric_func() # Chama sem argumentos (ex: .f1_score())
+            val = metric_func() 
             return val if pd.notna(val) else 0.0
         except Exception:
             return 0.0
-    # -------------------------------------------
 
     final_report = {}
     for model_name, state in models_to_evaluate.items():
@@ -281,9 +266,9 @@ def run_evaluation_stream(stream, models_to_evaluate, eval_params):
         
         final_report[model_name] = {
             "Acurácia": get_metric(evaluator.accuracy),
-            "F1-Score": get_metric(evaluator.f1_score),   # Removido weighted=True
-            "Precision": get_metric(evaluator.precision), # Removido weighted=True
-            "Recall": get_metric(evaluator.recall),       # Removido weighted=True
+            "F1-Score": get_metric(evaluator.f1_score),   
+            "Precision": get_metric(evaluator.precision), 
+            "Recall": get_metric(evaluator.recall),       
             "Kappa": get_metric(evaluator.kappa)
         }
     
