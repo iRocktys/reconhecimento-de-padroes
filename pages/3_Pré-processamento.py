@@ -4,19 +4,16 @@ import os
 import altair as alt 
 from utils.style import load_custom_css
 from utils.preprocessing import create_stream_pipeline
-
-# --- Configuração da Página ---
-st.set_page_config(
-    page_title="Pré-processamento", 
-    page_icon="🔬",
-    layout="centered" 
-)
 load_custom_css("style.css")
 
-# --- Função Auxiliar ---
+st.set_page_config(
+    page_title="IDS Stream Mining", 
+    page_icon="🛡️",
+    layout="centered" 
+)
+
 @st.cache_data
 def load_sample_df(filepath):
-    """Carrega uma amostra do DF para preencher os widgets."""
     try:
         df_sample = pd.read_csv(filepath, nrows=50)
         df_sample.columns = df_sample.columns.str.strip()
@@ -29,20 +26,19 @@ def load_sample_df(filepath):
         return None, [], []
 
 def find_default_index(options, default_value):
-    """Encontra o índice de um valor padrão em uma lista."""
     try:
         return options.index(default_value)
     except ValueError:
         return 0
 
-# --- Renderização da Página ---
-st.title("🔬 2. Pré-processamento e Criação do Stream")
+# Renderização da Página
+st.title("Pré-processamento e Criação do Stream")
 
-# --- Verificação de Arquivo ---
+# Verificação de Arquivo 
 filepath = st.session_state.get('file_to_analyze')
 all_cols, cols_to_pre_remove = [], []
 file_selected = False
-placeholder_options = ['(Selecione um arquivo na Etapa 1)'] 
+placeholder_options = ['Selecione um arquivo na Base de Dados'] 
 
 if filepath and os.path.exists(filepath):
     df_sample, all_cols, cols_to_pre_remove = load_sample_df(filepath)
@@ -52,17 +48,17 @@ if filepath and os.path.exists(filepath):
         st.error(f"Erro ao ler o arquivo selecionado: {filepath}")
 else:
     if not filepath:
-        st.warning("NOTA: Nenhum arquivo de dados selecionado. Por favor, vá para a página '1. Base de Dados' e selecione um arquivo no Passo 5 para habilitar esta página.")
+        st.warning("NOTA: Nenhum arquivo de dados selecionado. Por favor, vá para a página **'Base de Dados'** e selecione um arquivo no **'Seleção dos Dados'** para habilitar esta página.")
     else:
         st.error(f"Arquivo selecionado '{filepath}' não foi encontrado. Retorne à página anterior e selecione um arquivo válido.")
 
-# --- Passo 2: Configuração dos Parâmetros ---
+# Configuração dos Parâmetros 
 st.header("Configuração do Pipeline", divider="rainbow")
-st.markdown("Defina os parâmetros para limpar os dados e criar o *stream* de dados para o treinamento. As opções ficarão habilitadas assim que um arquivo válido for selecionado na Etapa 1.")
+st.markdown("Defina os parâmetros para limpar os dados e criar o *stream* de dados para o treinamento. As opções ficarão habilitadas assim que um arquivo válido for selecionado na Base de Dados.")
 
 with st.container(border=True):
-    st.subheader("Passo A: Definição das Colunas Principais")
-    st.markdown("Defina as colunas essenciais para o modelo: o que ele deve prever (Alvo) e, opcionalmente, a ordem em que os dados chegaram (Timestamp).")
+    st.subheader("Definição das Colunas Principais")
+    st.markdown("Defina as colunas essenciais para o modelo: o que ele deve prever (Alvo) e, a ordem em que os dados chegaram (Timestamp).")
     
     label_idx = find_default_index(all_cols, 'Label')
     target_col = st.selectbox(
@@ -75,7 +71,7 @@ with st.container(border=True):
     
     ts_idx = find_default_index(all_cols, 'Timestamp')
     timestamp_col = st.selectbox(
-        "Selecione a Coluna de Timestamp (Opcional)", 
+        "Selecione a Coluna para ordenação (Timestamp)", 
         options=['Nenhuma'] + (all_cols if file_selected else []), 
         index=ts_idx + 1 if file_selected and ts_idx >= 0 else 0,
         help="Se selecionado, os dados serão ordenados por esta coluna para simular um stream em ordem cronológica. Se 'Nenhuma', a ordem do CSV será usada.",
@@ -84,7 +80,7 @@ with st.container(border=True):
     timestamp_col = None if timestamp_col == 'Nenhuma' else timestamp_col
 
 with st.container(border=True):
-    st.subheader("Passo B: Limpeza de Dados e Imputação")
+    st.subheader("Limpeza de Dados e Imputação")
     st.markdown("Defina como o pipeline deve tratar dados ausentes, infinitos ou colunas irrelevantes.")
 
     available_cols = [col for col in all_cols if col != target_col and col != timestamp_col]
@@ -107,14 +103,14 @@ with st.container(border=True):
     )
 
 with st.container(border=True):
-    st.subheader("Passo C: Seleção de Features (Opcional)")
+    st.subheader("Seleção de Features")
     st.markdown("""
     Após a limpeza, podemos reduzir ainda mais o número de colunas (features) para acelerar o treinamento e, potencialmente, melhorar a precisão.
     """)
     
     feature_selection_method = st.radio(
         "Escolha o método de seleção de features:",
-        ['Seleção Manual', 'Seleção Automática (Algoritmo)'],
+        ['Seleção Manual', 'Seleção Automática'],
         index=0,
         horizontal=True,
         disabled=not file_selected
@@ -136,7 +132,7 @@ with st.container(border=True):
     pca_whiten = False
 
     if feature_selection_method == 'Seleção Manual':
-        st.markdown("Selecione manualmente as features que você deseja manter. **Se este campo ficar vazio, todas as features restantes (não removidas) serão usadas.**")
+        st.markdown("Selecione manualmente as features que você deseja manter. **Se este campo ficar vazio, todas as features restantes serão usadas.**")
         manual_features_list = st.multiselect(
             "Manter APENAS estas features:",
             options=available_features if file_selected else placeholder_options,
@@ -145,24 +141,23 @@ with st.container(border=True):
             disabled=not file_selected
         )
     
-    elif feature_selection_method == 'Seleção Automática (Algoritmo)':
+    elif feature_selection_method == 'Seleção Automática':
         st.markdown("Escolha um algoritmo para pontuar e selecionar as melhores features automaticamente.")
         auto_algo = st.selectbox(
             "Algoritmo de Seleção/Extração",
             options=[
                 'Random Forest Importance', 
-                'SelectKBest (ANOVA)', 
+                'SelectKBest', 
                 'PCA (Extração de Componentes)'
             ],
             index=0,
             disabled=not file_selected
         )
         
-        # --- NOVOS WIDGETS DE HIPERPARÂMETROS (Request 1 e 3) ---
         if auto_algo == 'Random Forest Importance':
             st.markdown("##### Hiperparâmetros do Random Forest")
             rf_iterations = st.number_input(
-                "Número de Iterações (para média)",
+                "Número de Iterações",
                 min_value=1, max_value=10, value=1, step=1,
                 disabled=not file_selected,
                 help="Rodar o algoritmo N vezes e tirar a média das importâncias. Aumenta a estabilidade, mas também o tempo de processamento."
@@ -188,7 +183,7 @@ with st.container(border=True):
                 help="O número mínimo de amostras necessário para ser um nó folha."
             )
         
-        elif auto_algo == 'SelectKBest (ANOVA)':
+        elif auto_algo == 'SelectKBest':
             st.markdown("##### Hiperparâmetros do SelectKBest")
             skb_score_func_str = st.selectbox(
                 "Função de Pontuação (score_func)",
@@ -197,7 +192,6 @@ with st.container(border=True):
                 disabled=not file_selected,
                 help="O teste estatístico usado para pontuar as features. 'ANOVA' é mais rápido, 'Informação Mútua' pode capturar relações não-lineares."
             )
-            # Extrai o nome da função real
             skb_score_func_name = skb_score_func_str.split(' ')[1].replace('(', '').replace(')', '')
         
         elif auto_algo == 'PCA (Extração de Componentes)':
@@ -211,7 +205,6 @@ with st.container(border=True):
             )
             pca_whiten = st.checkbox("Normalizar Componentes (whiten=True)", value=False, disabled=not file_selected,
                                      help="Se marcado, normaliza os componentes resultantes. Pode ser útil para alguns algoritmos.")
-        # --- FIM DOS NOVOS WIDGETS ---
             
         n_features_auto = st.number_input(
             f"Número de features/componentes a manter:",
@@ -222,11 +215,8 @@ with st.container(border=True):
             disabled=not file_selected
         )
 
-# --- Passo 3: Execução do Pipeline ---
-# st.header("Execução do Pipeline", divider="rainbow")
-
-col1_btn, col2_btn, col3_btn = st.columns([1, 2, 1])
-with col2_btn:
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
     start_button_clicked = st.button(
         "🚀 Iniciar Pré-processamento e Criar Stream", 
         type="primary", 
@@ -234,7 +224,6 @@ with col2_btn:
     )
 
 if start_button_clicked:
-    # Salva as escolhas no session_state
     st.session_state.target_col = target_col
     st.session_state.timestamp_col = timestamp_col
     st.session_state.cols_to_remove = cols_to_remove
@@ -247,8 +236,6 @@ if start_button_clicked:
         
     st.session_state.n_features_auto = n_features_auto
     st.session_state.manual_features_list = manual_features_list
-    
-    # --- NOVO: Salva os hiperparâmetros ---
     st.session_state.rf_n_estimators = rf_n_estimators
     st.session_state.rf_iterations = rf_iterations
     st.session_state.rf_max_depth = rf_max_depth
@@ -269,7 +256,6 @@ if start_button_clicked:
             feature_selection_method=st.session_state.feature_selection_method, 
             n_features_auto=n_features_auto,
             manual_features_list=manual_features_list,
-            # --- NOVO: Passa os hiperparâmetros ---
             n_estimators=rf_n_estimators,
             rf_max_depth=rf_max_depth,
             rf_min_samples_leaf=rf_min_samples_leaf,
@@ -290,6 +276,7 @@ if start_button_clicked:
         st.session_state.X_final_df = X_data_df_cleaned 
         st.session_state.feature_importance_report = feature_report
         
+        st.header("Resultado do Pipeline", divider="rainbow")
         st.subheader("Análise Pós-Processamento")
         
         if st.session_state.feature_importance_report:
@@ -321,7 +308,7 @@ if start_button_clicked:
         with st.expander(f"Lista Final de Features ({len(final_features)})", expanded=False):
             st.code(f"{final_features}")
             
-        st.markdown("##### Distribuição de Classes (Pós-Processamento)")
+        st.markdown("##### Distribuição de Classes")
         report_df = df_processed.loc[X_data_df_cleaned.index][target_col].value_counts().reset_index()
         report_df.columns = [target_col, 'Contagem']
         
@@ -334,7 +321,7 @@ if start_button_clicked:
         st.altair_chart(bar_chart, width='stretch')
         
         if timestamp_col:
-            st.markdown("##### Distribuição de Ataques ao Longo do Tempo (Contínuo)")
+            st.markdown("##### Distribuição de Ataques ao Longo do Tempo")
             
             try:
                 df_plot = df_processed.copy()
@@ -353,7 +340,7 @@ if start_button_clicked:
                 st.warning(f"Não foi possível gerar o gráfico de distribuição ao longo do tempo: {e}")
             
         
-        st.info("💾 **Próximo Passo:** Os dados processados e o *stream* foram salvos na sessão.\n\nClique em **'3. Treinamento'** na barra lateral para continuar.")
+        st.info("**Próximo Passo:** Os dados processados e o *stream* foram salvos na sessão. Clique em **'Modelos'** na barra lateral para continuar.")
         
     else:
         st.error("Ocorreu um erro durante o processamento. Verifique os logs acima para mais detalhes.")

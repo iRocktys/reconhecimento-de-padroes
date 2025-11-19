@@ -1,15 +1,8 @@
 import streamlit as st
 from utils.style import load_custom_css
-
-# --- Carregamento de Estilo ---
-# Carrega o seu arquivo style.css (ótima prática)
 load_custom_css("style.css")
 
-# --- INICIALIZAÇÃO CRÍTICA DO ESTADO ---
-# Manter todas as chaves de estado aqui é a melhor forma de 
-# garantir que o aplicativo não quebre ao trocar de página.
-#
-# Chaves do seu código original (para Pré-processamento e Treinamento)
+# Chaves do seu código original 
 if 'df_original' not in st.session_state:
     st.session_state.df_original = None
 if 'df_processed' not in st.session_state:
@@ -40,22 +33,18 @@ if 'processed_amostras' not in st.session_state:
     st.session_state.processed_amostras = 0
 if 'file_to_analyze' not in st.session_state:
     st.session_state.file_to_analyze = None 
-# ----------------------------------------
 
 st.set_page_config(
-    page_title="App IDS Stream Mining", 
-    # Layout "centered" para focar no texto
+    page_title="IDS Stream Mining", 
+    page_icon="🛡️",
     layout="centered",
     initial_sidebar_state="expanded"
 )
 
-# --- Conteúdo da Página Principal ---
+st.title("Sistema de Detecção de Intrusão com Stream Mining")
 
-st.title("🛡️ Sistema de Detecção de Intrusão (IDS) com Stream Mining")
-
-# --- Seção "Sobre o Dataset" (Mantida) ---
+# Seção "Sobre o Dataset"
 st.header("Sobre o Dataset e a Metodologia", divider="rainbow")
-
 st.subheader("O Dataset: CICDDoS2019")
 st.markdown("""
 Esta aplicação utiliza o **CICDDoS2019**, um dos datasets mais modernos e abrangentes para a detecção de ataques de Negação de Serviço (DDoS). Ele foi criado pelo *Canadian Institute for Cybersecurity (CIC)* e é amplamente utilizado pela comunidade acadêmica e de segurança.
@@ -73,12 +62,10 @@ O volume de dados de rede é gigantesco e contínuo. Por isso, uma abordagem de 
 
 Neste projeto, exploramos a metodologia de **Stream Mining** (Mineração de Dados de Fluxo). O objetivo é construir um modelo que possa ser treinado e fazer previsões em tempo real, analisando cada fluxo de rede **individualmente, à medida que ele chega**.
 
-As próximas páginas deste aplicativo o guiarão pelo processo de carregar, processar e, finalmente, treinar e avaliar um modelo de *Stream Mining* com esses dados.
+As próximas páginas deste aplicativo o guiarão pelo processo de carregar, processar, treinar e avaliar um modelo de *Stream Mining* com esses dados.
 """)
-# --- FIM DA SEÇÃO ---
 
-
-# --- Seção "Sobre" (Atualizada) ---
+# Seção "Sobre"
 st.header("Sobre o Autor e este Projeto", divider="rainbow")
 st.markdown(f"""
 Este aplicativo está sendo desenvolvido pelo autor Leandro M. Tosta como projeto prático 
@@ -88,7 +75,6 @@ em Ciência da Computação da **Universidade Estadual de Londrina (UEL)**.
 **Orientador:** Prof. Dr. Bruno Zarpelão.
 
 O código-fonte completo e a documentação deste projeto estão disponíveis publicamente no GitHub.
-Sinta-se à vontade para explorar, "forkar" e contribuir!
 
 [https://github.com/iRocktys/reconhecimento-de-padroes](httpsS://github.com/iRocktys/reconhecimento-de-padroes)
 """)
