@@ -12,17 +12,6 @@ from capymoa.evaluation import ClassificationEvaluator
 from capymoa.drift.detectors import DDM, ADWIN, ABCD
 
 def get_models(schema, global_params, models_to_run, all_model_params):
-    """
-    Constrói dinamicamente o dicionário de modelos, avaliadores e
-    detectores de drift com base nos parâmetros da UI.
-    
-    Args:
-        schema: O schema do stream (necessário para os modelos).
-        global_params: Um dicionário com chaves como 'WINDOW_SIZE', 'DELAY_LENGTH'.
-        models_to_run: Uma lista de strings com os nomes dos modelos (ex: ["LeveragingBagging"]).
-        all_model_params: Um dicionário aninhado (ex: {"LeveragingBagging": {"ensemble_size": 50}}).
-    """
-    
     window_size = global_params.get("WINDOW_SIZE", 500)
     delay_length = global_params.get("DELAY_LENGTH") 
     models_to_test = {}
@@ -140,7 +129,6 @@ def get_models(schema, global_params, models_to_run, all_model_params):
             "results_drift_ABCD": []
         }
         
-    # Adiciona a fila de delay se necessário
     if delay_length is not None and delay_length > 0:
         log_msg = f"Aplicando um delay de {delay_length} instâncias."
         for model_name in models_to_test:

@@ -8,7 +8,6 @@ from utils.style import load_custom_css
 from utils.evaluation import run_evaluation_stream, get_attack_summary_table 
 import math 
 
-# Configuração da Página 
 load_custom_css("style.css")
 st.set_page_config(
     page_title="IDS Stream Mining", 
@@ -20,10 +19,8 @@ def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-# Renderização da Página 
 st.title("Avaliação dos Modelos")
 
-# Verificar se os dados existem 
 if 'stream_data' not in st.session_state or \
    'models_to_evaluate' not in st.session_state or \
    'evaluation_params' not in st.session_state or \
@@ -33,7 +30,6 @@ if 'stream_data' not in st.session_state or \
     st.warning("Por favor, retorne às páginas anteriores e execute todo o fluxo (Base de Dados -> Pré-processamento -> Modelos) antes de executar a avaliação.")
     st.stop()
 
-# Carrega os dados da sessão 
 stream = st.session_state.stream_data
 models_to_evaluate = st.session_state.models_to_evaluate
 eval_params = st.session_state.evaluation_params
@@ -44,16 +40,6 @@ target_col = st.session_state.target_col
 if 'evaluation_results' not in st.session_state:
     st.session_state.evaluation_results = None
 
-# --- Tabela de Ataques ---
-# with st.expander("Ver Resumo dos Ataques no Stream"):
-#     st.markdown("Esta tabela mostra onde cada ataque (não-BENIGN) começa e termina no *stream* de dados processado.")
-#     summary_table = get_attack_summary_table(df_processed, target_col)
-#     if summary_table.empty:
-#         st.info("Nenhum ataque (não-BENIGN) foi encontrado no stream processado.")
-#     else:
-#         st.dataframe(summary_table, width='stretch', hide_index=True)
-
-# Botão de Execução
 st.header("Executar Avaliação Prequencial", divider="rainbow")
 st.markdown(f"Clique no botão abaixo para iniciar a avaliação de **{len(models_to_run)}** modelo(s) em **{eval_params.get('MAX_INSTANCES'):,}** instâncias.")
 
@@ -110,15 +96,6 @@ if start_button_clicked:
                     "Acurácia": metrics.get("Acurácia", 0)
                 })
                 
-                # for detector in ["DDM", "ADWIN", "ABCD"]:
-                #     drift_key = f"Drift ({detector})"
-                #     if metrics.get(drift_key, 0) == 1:
-                #         drift_history.append({
-                #             "Instância": instance_idx,
-                #             "Modelo/Detector": f"{model_name} ({detector})",
-                #             "Detector": detector
-                #         })
-
         if accuracy_history:
             df_acc = pd.DataFrame(accuracy_history)
             df_drift = pd.DataFrame(drift_history)
@@ -156,7 +133,6 @@ if start_button_clicked:
     if st.session_state.evaluation_results:
         st.success("Avaliação finalizada!")
 
-# Exibição dos Resultados
 if st.session_state.evaluation_results:
     results = st.session_state.evaluation_results
     final_report = results["final_report"]
@@ -173,7 +149,6 @@ if st.session_state.evaluation_results:
     df_metrics_final = pd.DataFrame(final_report).T.reset_index()
     df_metrics_final = df_metrics_final.rename(columns={"index": "Modelo"})
     
-    # Formata as colunas para 4 casas decimais
     for col in ["Acurácia", "F1-Score", "Precision", "Recall", "Kappa"]:
         if col in df_metrics_final.columns:
             df_metrics_final[col] = pd.to_numeric(df_metrics_final[col], errors='coerce').fillna(0.0)
