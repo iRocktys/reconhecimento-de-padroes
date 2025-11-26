@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 import altair as alt 
+import warnings
+warnings.filterwarnings("ignore") 
 from utils.style import load_custom_css
 from utils.preprocessing import create_stream_pipeline
 load_custom_css("style.css")
@@ -31,10 +33,8 @@ def find_default_index(options, default_value):
     except ValueError:
         return 0
 
-# Renderização da Página
 st.title("Pré-processamento e Criação do Stream")
 
-# Verificação de Arquivo 
 filepath = st.session_state.get('file_to_analyze')
 all_cols, cols_to_pre_remove = [], []
 file_selected = False
@@ -52,7 +52,6 @@ else:
     else:
         st.error(f"Arquivo selecionado '{filepath}' não foi encontrado. Retorne à página anterior e selecione um arquivo válido.")
 
-# Configuração dos Parâmetros 
 st.header("Configuração do Pipeline", divider="rainbow")
 st.markdown("Defina os parâmetros para limpar os dados e criar o *stream* de dados para o treinamento. As opções ficarão habilitadas assim que um arquivo válido for selecionado na Base de Dados.")
 
@@ -105,12 +104,12 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("Seleção de Features")
     st.markdown("""
-    Após a limpeza, podemos reduzir ainda mais o número de colunas (features) para acelerar o treinamento e, potencialmente, melhorar a precisão.
+    Podemos reduzir o número de colunas removendo features que são muito semelhantes, mantendo o dataset mais leve e eficiente.
     """)
     
     feature_selection_method = st.radio(
-        "Escolha o método de seleção de features:",
-        ['Seleção Manual', 'Seleção Automática'],
+        "Escolha o método:",
+        ['Seleção Manual', 'Remover Correlação'],
         index=0,
         horizontal=True,
         disabled=not file_selected
@@ -118,18 +117,9 @@ with st.container(border=True):
     
     available_features = [col for col in available_cols if col not in cols_to_remove]
     
-    # --- Valores Padrão ---
     manual_features_list = []
-    auto_algo = 'Random Forest Importance'
-    n_features_auto = 10
-    rf_n_estimators = 100
-    rf_iterations = 1
-    rf_max_depth = None
-    rf_min_samples_leaf = 1
-    use_max_depth_none = True
-    skb_score_func_name = 'f_classif'
-    pca_svd_solver = 'auto'
-    pca_whiten = False
+    correlation_method = 'pearson'
+    correlation_threshold = 0.95
 
     if feature_selection_method == 'Seleção Manual':
         st.markdown("Selecione manualmente as features que você deseja manter. **Se este campo ficar vazio, todas as features restantes serão usadas.**")
@@ -141,79 +131,25 @@ with st.container(border=True):
             disabled=not file_selected
         )
     
-    elif feature_selection_method == 'Seleção Automática':
-        st.markdown("Escolha um algoritmo para pontuar e selecionar as melhores features automaticamente.")
-        auto_algo = st.selectbox(
-            "Algoritmo de Seleção/Extração",
-            options=[
-                'Random Forest Importance', 
-                'SelectKBest', 
-                'PCA (Extração de Componentes)'
-            ],
-            index=0,
-            disabled=not file_selected
-        )
+    elif feature_selection_method == 'Remover Correlação':
+        st.markdown("Analisa a correlação entre todas as features e remove aquelas que forem redundantes (acima do limiar escolhido).")
         
-        if auto_algo == 'Random Forest Importance':
-            st.markdown("##### Hiperparâmetros do Random Forest")
-            rf_iterations = st.number_input(
-                "Número de Iterações",
-                min_value=1, max_value=10, value=1, step=1,
-                disabled=not file_selected,
-                help="Rodar o algoritmo N vezes e tirar a média das importâncias. Aumenta a estabilidade, mas também o tempo de processamento."
-            )
-            rf_n_estimators = st.number_input(
-                "Número de Árvores por Iteração (n_estimators)",
-                min_value=10, max_value=1000, value=100, step=10,
-                disabled=not file_selected,
-                help="Número de árvores na floresta. Valores maiores são mais precisos, mas levam mais tempo."
-            )
-            use_max_depth_none = st.checkbox("Usar max_depth=None (sem limite)", value=True, disabled=not file_selected)
-            rf_max_depth_value = st.number_input(
-                "Profundidade Máxima da Árvore (max_depth)",
-                min_value=1, value=10, step=1,
-                disabled=use_max_depth_none or not file_selected,
-                help="Limite a profundidade de cada árvore. Desmarque o checkbox acima para definir um limite."
-            )
-            rf_max_depth = None if use_max_depth_none else rf_max_depth_value
-            rf_min_samples_leaf = st.number_input(
-                "Mínimo de Amostras por Folha (min_samples_leaf)",
-                min_value=1, value=1, step=1,
-                disabled=not file_selected,
-                help="O número mínimo de amostras necessário para ser um nó folha."
-            )
-        
-        elif auto_algo == 'SelectKBest':
-            st.markdown("##### Hiperparâmetros do SelectKBest")
-            skb_score_func_str = st.selectbox(
-                "Função de Pontuação (score_func)",
-                options=["ANOVA (f_classif)", "Informação Mútua (mutual_info_classif)"],
+        col_m, col_t = st.columns(2)
+        with col_m:
+            correlation_method = st.selectbox(
+                "Método de Correlação",
+                options=['pearson', 'spearman', 'kendall'],
                 index=0,
                 disabled=not file_selected,
-                help="O teste estatístico usado para pontuar as features. 'ANOVA' é mais rápido, 'Informação Mútua' pode capturar relações não-lineares."
+                help="Pearson (linear), Spearman (rank/monotônica), Kendall (rank/robustez)."
             )
-            skb_score_func_name = skb_score_func_str.split(' ')[1].replace('(', '').replace(')', '')
-        
-        elif auto_algo == 'PCA (Extração de Componentes)':
-            st.markdown("##### Hiperparâmetros do PCA")
-            pca_svd_solver = st.selectbox(
-                "SVD Solver (svd_solver)",
-                options=['auto', 'full', 'randomized'],
-                index=0,
+        with col_t:
+            correlation_threshold = st.slider(
+                "Limiar de Corte (Threshold)",
+                min_value=0.5, max_value=0.99, value=0.95, step=0.01,
                 disabled=not file_selected,
-                help="O método que o PCA usa para decompor os dados. 'randomized' costuma ser mais rápido em datasets grandes."
+                help="Se a correlação entre duas colunas for maior que este valor, uma delas será removida."
             )
-            pca_whiten = st.checkbox("Normalizar Componentes (whiten=True)", value=False, disabled=not file_selected,
-                                     help="Se marcado, normaliza os componentes resultantes. Pode ser útil para alguns algoritmos.")
-            
-        n_features_auto = st.number_input(
-            f"Número de features/componentes a manter:",
-            min_value=1,
-            max_value=len(available_features) if file_selected and available_features else 1,
-            value=min(10, len(available_features)) if available_features else 1, 
-            step=1,
-            disabled=not file_selected
-        )
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
@@ -228,21 +164,10 @@ if start_button_clicked:
     st.session_state.timestamp_col = timestamp_col
     st.session_state.cols_to_remove = cols_to_remove
     st.session_state.imputation_method = imputation_method
-    
-    if feature_selection_method == 'Seleção Manual':
-        st.session_state.feature_selection_method = 'Seleção Manual'
-    else:
-        st.session_state.feature_selection_method = auto_algo
-        
-    st.session_state.n_features_auto = n_features_auto
+    st.session_state.feature_selection_method = feature_selection_method
     st.session_state.manual_features_list = manual_features_list
-    st.session_state.rf_n_estimators = rf_n_estimators
-    st.session_state.rf_iterations = rf_iterations
-    st.session_state.rf_max_depth = rf_max_depth
-    st.session_state.rf_min_samples_leaf = rf_min_samples_leaf
-    st.session_state.skb_score_func_name = skb_score_func_name
-    st.session_state.pca_svd_solver = pca_svd_solver
-    st.session_state.pca_whiten = pca_whiten
+    st.session_state.correlation_method = correlation_method
+    st.session_state.correlation_threshold = correlation_threshold
     
     log_placeholder = st.empty() 
     
@@ -253,16 +178,10 @@ if start_button_clicked:
             timestamp_col=timestamp_col,
             cols_para_remover=cols_to_remove,
             imputation_method=imputation_method,
-            feature_selection_method=st.session_state.feature_selection_method, 
-            n_features_auto=n_features_auto,
+            feature_selection_method=feature_selection_method, 
             manual_features_list=manual_features_list,
-            n_estimators=rf_n_estimators,
-            rf_max_depth=rf_max_depth,
-            rf_min_samples_leaf=rf_min_samples_leaf,
-            rf_iterations=rf_iterations,
-            skb_score_func_name=skb_score_func_name,
-            pca_svd_solver=pca_svd_solver,
-            pca_whiten=pca_whiten
+            correlation_method=correlation_method,
+            correlation_threshold=correlation_threshold
         )
     
     log_placeholder.text_area("Logs do Processamento", "\n".join(log_messages), height=300)
@@ -279,33 +198,19 @@ if start_button_clicked:
         st.header("Resultado do Pipeline", divider="rainbow")
         st.subheader("Análise Pós-Processamento")
         
-        if st.session_state.feature_importance_report:
-            if st.session_state.feature_selection_method == 'PCA (Extração de Componentes)':
-                chart_title = f"Variância Explicada (Top {st.session_state.n_features_auto} Componentes)"
-                score_title = "Variância Explicada"
-            else:
-                chart_title = f"Importância das Features (Top {st.session_state.n_features_auto})"
-                score_title = "Score de Importância"
+        if st.session_state.feature_importance_report and 'dropped_features' in st.session_state.feature_importance_report:
+            dropped = st.session_state.feature_importance_report['dropped_features']
+            n_dropped = len(dropped)
+            
+            with st.expander(f"Features Removidas por Alta Correlação ({n_dropped})", expanded=True):
+                if n_dropped > 0:
+                    st.write(f"As seguintes colunas foram removidas pois apresentaram correlação acima de **{correlation_threshold}** com outras variáveis:")
+                    st.code(f"{dropped}")
+                else:
+                    st.info("Nenhuma feature apresentou correlação alta o suficiente para ser removida com o limiar atual.")
 
-            with st.expander(chart_title, expanded=True):
-                report_dict = st.session_state.feature_importance_report
-                df_importance = pd.DataFrame(
-                    list(report_dict.items()), 
-                    columns=['Feature', 'Score']
-                ).sort_values(by='Score', ascending=False)
-                
-                df_importance_top = df_importance.head(st.session_state.n_features_auto)
-                
-                chart = alt.Chart(df_importance_top).mark_bar().encode(
-                    x=alt.X('Score:Q', title=score_title),
-                    y=alt.Y('Feature:N', sort='-x'), 
-                    tooltip=['Feature', 'Score']
-                ).interactive()
-                
-                st.altair_chart(chart, width='stretch')
-        
         final_features = X_data_df_cleaned.columns.tolist()
-        with st.expander(f"Lista Final de Features ({len(final_features)})", expanded=False):
+        with st.expander(f"Lista Final de Features Mantidas ({len(final_features)})", expanded=False):
             st.code(f"{final_features}")
             
         st.markdown("##### Distribuição de Classes")
@@ -325,7 +230,8 @@ if start_button_clicked:
             
             try:
                 df_plot = df_processed.copy()
-                df_plot['time_bin'] = df_plot[timestamp_col].dt.floor('T')
+                # CORREÇÃO AQUI: Mudado de 'T' para 'min'
+                df_plot['time_bin'] = df_plot[timestamp_col].dt.floor('min')
                 df_agg = df_plot.groupby(['time_bin', target_col]).size().reset_index(name='Contagem')
                 
                 area_chart = alt.Chart(df_agg).mark_area().encode(
@@ -339,7 +245,6 @@ if start_button_clicked:
             except Exception as e:
                 st.warning(f"Não foi possível gerar o gráfico de distribuição ao longo do tempo: {e}")
             
-        
         st.info("**Próximo Passo:** Os dados processados e o *stream* foram salvos na sessão. Clique em **'Modelos'** na barra lateral para continuar.")
         
     else:
