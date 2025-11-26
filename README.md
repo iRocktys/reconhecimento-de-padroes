@@ -3,11 +3,10 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-red)
 ![CapyMOA](https://img.shields.io/badge/Lib-CapyMOA-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
 
 Este repositório contém uma aplicação visual desenvolvida em **Streamlit** para a experimentação, análise e comparação de algoritmos de **Aprendizado de Máquina Online (Stream Mining)** aplicados a Sistemas de Detecção de Intrusão (IDS).
 
-A ferramenta utiliza a biblioteca **CapyMOA** para integrar algoritmos de ponta (como Adaptive Random Forest e Hoeffding Adaptive Trees) e oferece um pipeline completo: desde o pré-processamento dinâmico do dataset CICDDoS2019 até a avaliação prequencial com detecção visual de *concept drift*.
+A ferramenta utiliza a biblioteca **CapyMOA** para integrar algoritmos e oferece um pipeline completo: desde o pré-processamento do dataset CICDDoS2019 até a avaliação prequencial com detecção visual de *concept drift*.
 
 ---
 
@@ -60,10 +59,10 @@ pip install -r requirements.txt
 Com o ambiente virtual ativado e as dependências instaladas, inicie a aplicação Streamlit. Como o projeto é dividido em páginas, recomenda-se iniciar pelo módulo de **Base de Dados**:
 
 ```bash
-streamlit run 2_Base_de_Dados.py
+python -m streamlit run 1_Home.py
 ```
 
-> **Nota:** O navegador abrirá automaticamente no endereço `http://localhost:8501`. Caso queira iniciar por outro módulo específico, basta alterar o nome do arquivo no comando acima.
+> **Nota:** O navegador abrirá automaticamente no endereço `http://localhost:8501`.
 
 ---
 
@@ -74,11 +73,3 @@ streamlit run 2_Base_de_Dados.py
 * `4_Modelos.py`: Configuração dos hiperparâmetros dos algoritmos e geração de streams sintéticos.
 * `5_Avaliação.py`: Dashboard de execução prequencial, métricas acumulativas e visualização de *drifts*.
 * `utils/`: Diretório contendo funções auxiliares de processamento, carregamento e estilização.
-
----
-
-## ✒️ Autoria
-
-Desenvolvido por **Leandro Martins Tosta**
-* **Instituição:** Universidade Estadual de Londrina (UEL)
-* **Contato:** leandro.martins@uel.br
