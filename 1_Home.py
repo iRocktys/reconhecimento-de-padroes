@@ -2,7 +2,6 @@ import streamlit as st
 from utils.style import load_custom_css
 load_custom_css("style.css")
 
-# Chaves do seu código original 
 if 'df_original' not in st.session_state:
     st.session_state.df_original = None
 if 'df_processed' not in st.session_state:
@@ -23,8 +22,6 @@ if 'features_to_keep' not in st.session_state:
     st.session_state.features_to_keep = []
 if 'imputation_method' not in st.session_state:
     st.session_state.imputation_method = 'Mediana'
-
-# Chaves que implementamos na página "Base de Dados"
 if 'processing' not in st.session_state:
     st.session_state.processing = False
 if 'processed_filepath' not in st.session_state:
@@ -42,8 +39,6 @@ st.set_page_config(
 )
 
 st.title("Sistema de Detecção de Intrusão com Stream Mining")
-
-# Seção "Sobre o Dataset"
 st.header("Sobre o Dataset e a Metodologia", divider="rainbow")
 st.subheader("O Dataset: CICDDoS2019")
 st.markdown("""
@@ -55,7 +50,6 @@ Esta aplicação utiliza o **CICDDoS2019**, um dos datasets mais modernos e abra
 * **Página Oficial (UNB):** [https://www.unb.ca/cic/datasets/ddos-2019.html](https://www.unb.ca/cic/datasets/ddos-2019.html)
 * **Versão no Kaggle (CSV):** [https://www.kaggle.com/datasets/rodrigorosasilva/cic-ddos2019-30gb-full-dataset-csv-files](https://www.kaggle.com/datasets/rodrigorosasilva/cic-ddos2019-30gb-full-dataset-csv-files)
 """)
-
 st.subheader("A Metodologia: Machine Learning e Stream Mining")
 st.markdown("""
 O volume de dados de rede é gigantesco e contínuo. Por isso, uma abordagem de *Machine Learning* tradicional (onde treinamos o modelo uma única vez com todos os dados) não é ideal.
@@ -64,8 +58,6 @@ Neste projeto, exploramos a metodologia de **Stream Mining** (Mineração de Dad
 
 As próximas páginas deste aplicativo o guiarão pelo processo de carregar, processar, treinar e avaliar um modelo de *Stream Mining* com esses dados.
 """)
-
-# Seção "Sobre"
 st.header("Sobre o Autor e este Projeto", divider="rainbow")
 st.markdown(f"""
 Este aplicativo está sendo desenvolvido pelo autor Leandro M. Tosta como projeto prático 

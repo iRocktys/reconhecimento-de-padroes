@@ -3,9 +3,8 @@ import pandas as pd
 import streamlit as st
 import time
 
-# --- Constantes ---
 PANDAS_CHUNK_SIZE = 50000 
-ATTACK_LABEL_COL = 'Label' # O nome "limpo" que queremos
+ATTACK_LABEL_COL = 'Label' 
 COLUMNS_TO_DROP = [
     'Unnamed: 0', 'Flow ID', 'Source IP', 'Source Port', 
     'Destination IP', 'Destination Port', 
@@ -14,8 +13,6 @@ COLUMNS_TO_DROP = [
 MIN_SAMPLES_PER_CHUNK = 1000
 BENIGN_LABEL = 'BENIGN'
 DATA_DIR = "data" 
-
-# Fatores de downsample padrão
 DOWNSAMPLE_FACTORS = {
     'DrDoS_NTP': 0.01,
     'DrDoS_DNS': 0.01,
@@ -35,8 +32,6 @@ DOWNSAMPLE_FACTORS = {
     'UDP': 0.01,
     'Default': 0.01
 }
-
-# Nomes dos arquivos .csv originais
 ATTACK_ORDER = {
     '03-11': [
         'Portmap.csv', 'NetBIOS.csv', 'LDAP.csv', 'MSSQL.csv', 'UDP.csv', 'UDPLag.csv', 'Syn.csv'
@@ -48,7 +43,6 @@ ATTACK_ORDER = {
     ]
 }
 
-# --- Funções de Lógica ---
 def process_and_save(
     dia, 
     dataset_path, 
@@ -155,17 +149,13 @@ def get_processed_file_report(filepath):
     if not os.path.exists(filepath):
         return None
     try:
-        # Lê apenas o cabeçalho para ser rápido
         header_df = pd.read_csv(filepath, nrows=1, engine='c')
-        
-        # Encontra o nome da coluna de label (com ou sem espaço)
         original_label_col = None
         for col_name in header_df.columns:
             if col_name.strip() == ATTACK_LABEL_COL:
                 original_label_col = col_name
                 break
-        
-        # Se não encontrou a coluna, reporta o erro
+            
         if original_label_col is None:
             st.error(f"Erro: A coluna '{ATTACK_LABEL_COL}' (com ou sem espaços) não foi encontrada em '{filepath}'.")
             return None

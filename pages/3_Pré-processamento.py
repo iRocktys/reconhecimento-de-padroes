@@ -230,7 +230,6 @@ if start_button_clicked:
             
             try:
                 df_plot = df_processed.copy()
-                # CORREÇÃO AQUI: Mudado de 'T' para 'min'
                 df_plot['time_bin'] = df_plot[timestamp_col].dt.floor('min')
                 df_agg = df_plot.groupby(['time_bin', target_col]).size().reset_index(name='Contagem')
                 

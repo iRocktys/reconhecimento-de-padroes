@@ -20,7 +20,6 @@ st.set_page_config(
     layout="centered" 
 )
 
-# Gerenciamento de Estado
 if 'processing' not in st.session_state:
     st.session_state.processing = False
 if 'processed_filepath' not in st.session_state:
@@ -30,7 +29,6 @@ if 'processed_amostras' not in st.session_state:
 if 'file_to_analyze' not in st.session_state:
     st.session_state.file_to_analyze = None 
 
-# Funções de Callback
 def start_processing():
     st.session_state.processing = True
     st.session_state.processed_filepath = None
@@ -42,7 +40,6 @@ def cancel_processing():
 def get_state():
     return st.session_state.processing
 
-# Funções da Página
 def render_sliders(selected_day):
     attack_files = ATTACK_ORDER[selected_day]
     attack_names = [f.replace('.csv', '') for f in attack_files]
