@@ -1,4 +1,4 @@
-# Stream-IDS: Experimentação Visual em Stream Mining para Detecção de Intrusão
+# Stream-IDS: Um Ambiente Visual para Experimentação e Avaliação de Algoritmos de Aprendizado Online em Fluxos de Redes
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-red)
