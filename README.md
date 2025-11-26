@@ -8,8 +8,6 @@ Este repositório contém uma aplicação visual desenvolvida em **Streamlit** p
 
 A ferramenta utiliza a biblioteca **CapyMOA** para integrar algoritmos e oferece um pipeline completo: desde o pré-processamento do dataset CICDDoS2019 até a avaliação prequencial com detecção visual de *concept drift*.
 
----
-
 ## 🛠️ Pré-requisitos
 
 Antes de começar, certifique-se de ter instalado em sua máquina:
@@ -17,8 +15,6 @@ Antes de começar, certifique-se de ter instalado em sua máquina:
 1.  **Python 3.10 ou superior**: [Download Python](https://www.python.org/downloads/)
 2.  **Java JDK (Obrigatório)**: O CapyMOA depende da JVM para executar os algoritmos do MOA. Certifique-se de ter o Java instalado e configurado no PATH do sistema.
     * *Verifique no terminal:* `java -version`
-
----
 
 ## 🚀 Instalação
 
@@ -52,8 +48,6 @@ Utilize o arquivo `requirements.txt` para instalar todas as bibliotecas necessá
 pip install -r requirements.txt
 ```
 
----
-
 ## ▶️ Como Executar
 
 Com o ambiente virtual ativado e as dependências instaladas, inicie a aplicação Streamlit. Como o projeto é dividido em páginas, recomenda-se iniciar pelo módulo de **Base de Dados**:
@@ -63,8 +57,6 @@ python -m streamlit run 1_Home.py
 ```
 
 > **Nota:** O navegador abrirá automaticamente no endereço `http://localhost:8501`.
-
----
 
 ## 📂 Estrutura do Projeto
 
